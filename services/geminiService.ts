@@ -3,6 +3,50 @@ import { PromptMode } from "../types";
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const COST_PER_1M_TOKENS = 0.10; // Rough estimate for Flash
 
+export interface GeminiModel {
+  name: string;
+  displayName: string;
+  description: string;
+  supportedGenerationMethods: string[];
+}
+
+/**
+ * Fetches all available models from the Gemini API.
+ * Returns models that support generateContent.
+ */
+export const fetchAvailableModels = async (apiKey: string): Promise<GeminiModel[]> => {
+  if (!apiKey) return [];
+  
+  try {
+    const res = await fetch(`${BASE_URL}/models?key=${apiKey}`);
+    if (!res.ok) {
+      console.warn(`Failed to fetch models: ${res.status}`);
+      return [];
+    }
+    
+    const data = await res.json();
+    const models = data.models || [];
+    
+    // Filter to only models that support generateContent and are Gemini models
+    const generativeModels = models
+      .filter((m: any) => 
+        m.supportedGenerationMethods?.includes('generateContent') &&
+        m.name.includes('gemini')
+      )
+      .map((m: any) => ({
+        name: m.name.replace(/^models\//, ''),
+        displayName: m.displayName || m.name,
+        description: m.description || '',
+        supportedGenerationMethods: m.supportedGenerationMethods || []
+      }));
+    
+    return generativeModels;
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    return [];
+  }
+};
+
 /**
  * Helper to construct the generation URL.
  */
@@ -62,6 +106,11 @@ export const validateAndGetModel = async (apiKey: string, preferredModel: string
   }
 };
 
+/**
+ * Transcribes audio from a Blob or File.
+ * Supports both recorded audio (Blob) and uploaded files (File).
+ * The file is automatically cleaned up from memory after transcription.
+ */
 export const transcribeAudio = async (
   audioBlob: Blob, 
   apiKey: string,

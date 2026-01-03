@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Copy, Trash2, Download, Square, PenTool, Sparkles, Mic, ChevronLeft, ChevronRight, Loader2, PanelLeftOpen, PanelRightOpen, Clock, Menu } from 'lucide-react';
+import { Settings, Copy, Trash2, Download, Square, PenTool, Sparkles, Mic, ChevronLeft, ChevronRight, Loader2, PanelLeftOpen, PanelRightOpen, Clock, Menu, Upload } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import clsx from 'clsx';
 
@@ -9,6 +9,38 @@ import { Waveform } from './components/Waveform';
 import { PromptifyPanel } from './components/PromptifyPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { SettingsModal } from './components/SettingsModal';
+import { FileUploadModal } from './components/FileUploadModal';
+
+// Error Boundary Component for Markdown Rendering
+class MarkdownErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: string },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Markdown rendering error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="whitespace-pre-wrap font-mono text-sm">
+          {this.props.fallback}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const DEFAULT_SETTINGS: SettingsData = {
   theme: 'light',
@@ -29,9 +61,11 @@ function App() {
   
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
   const [usage, setUsage] = useState<ApiUsage>({ calls: 0, tokens: 0, cost: 0 });
   const [error, setError] = useState<string | null>(null);
   
@@ -54,6 +88,26 @@ function App() {
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // Debug logging for mobile (runs once on mount)
+  useEffect(() => {
+    console.log('🎯 Yappify AI loaded successfully');
+    console.log('📱 User Agent:', navigator.userAgent);
+    console.log('🌐 Window size:', window.innerWidth, 'x', window.innerHeight);
+    console.log('🔗 Current URL:', window.location.href);
+    console.log('🌍 Hostname:', window.location.hostname);
+    
+    // Detect if running on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log('📱 Mobile device detected');
+      console.log('💡 To access from desktop, use:', window.location.href);
+    } else {
+      console.log('💻 Desktop device detected');
+      // Try to detect local network IP (this won't work in browser, but helpful for dev)
+      console.log('💡 To access from mobile, ensure you use the Network URL from terminal');
+    }
+  }, []);
 
   // --- Effects ---
 
@@ -92,7 +146,8 @@ function App() {
   // Model Validation
   useEffect(() => {
     const validate = async () => {
-        if (!settings.apiKey) return;
+        if (!settings.apiKey || settings.apiKey.length < 30) return;
+        
         try {
             const validModel = await validateAndGetModel(settings.apiKey, settings.modelId);
             if (validModel !== settings.modelId) {
@@ -105,15 +160,32 @@ function App() {
             console.error("Model validation error", e);
         }
     };
-    if (settings.apiKey.length > 20) {
+    
+    // Debounce validation to only run after user stops typing
+    const timeoutId = setTimeout(() => {
+      if (settings.apiKey.length > 30) {
         validate();
-    }
-  }, [settings.apiKey]);
+      }
+    }, 1000); // Wait 1 second after last keystroke
+    
+    return () => clearTimeout(timeoutId);
+  }, [settings.apiKey, settings.modelId]);
 
   // --- Helpers ---
 
   const currentDisplay = viewMode === ViewMode.RAW ? rawTranscript : transformedTranscript;
   const isProcessing = appState === AppState.TRANSCRIBING || appState === AppState.PROMPTIFYING;
+
+  // Sanitize text for safe display (remove potential problematic characters)
+  const sanitizeText = (text: string): string => {
+    if (!text) return '';
+    // Limit length to prevent memory issues
+    const maxLength = 50000;
+    if (text.length > maxLength) {
+      return text.substring(0, maxLength) + '\n\n... (truncated for display)';
+    }
+    return text;
+  };
 
   // Calculate Center Panel Col Span
   // Total 12 cols. Left/Right take 3 each if open.
@@ -165,7 +237,8 @@ function App() {
   };
 
   const handleTranscribe = async () => {
-    if (!audioBlob) return;
+    const sourceBlob = uploadedFile || audioBlob;
+    if (!sourceBlob) return;
     if (!settings.apiKey) {
       setIsSettingsOpen(true);
       setError("API Key required.");
@@ -175,15 +248,19 @@ function App() {
     setError(null);
     setTransformedTranscript('');
     try {
-      const result = await transcribeAudio(audioBlob, settings.apiKey, settings.modelId);
+      const result = await transcribeAudio(sourceBlob, settings.apiKey, settings.modelId);
       setRawTranscript(result.text);
       updateUsage(result.usage);
       setAppState(AppState.READY);
       setViewMode(ViewMode.RAW);
+      // Clear uploaded file after transcription
+      if (uploadedFile) {
+        setUploadedFile(null);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Transcription failed.");
-      setAppState(AppState.RECORDED);
+      setAppState(uploadedFile ? AppState.IDLE : AppState.RECORDED);
     }
   };
 
@@ -230,9 +307,16 @@ function App() {
     setRawTranscript('');
     setTransformedTranscript('');
     setAudioBlob(null);
+    setUploadedFile(null);
     setAppState(AppState.IDLE);
     setViewMode(ViewMode.RAW);
     setIsConfirmClearOpen(false);
+  };
+
+  const handleFileSelect = (file: File) => {
+    setUploadedFile(file);
+    setAudioBlob(null); // Clear any recorded audio
+    setAppState(AppState.RECORDED); // Set to recorded state so transcribe button is enabled
   };
 
   const handleRestoreHistory = (item: HistoryItem) => {
@@ -243,6 +327,14 @@ function App() {
     if (item.mode) setPromptMode(item.mode);
     // Close mobile panel on restore
     setMobileRightOpen(false);
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    setHistory(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleClearAllHistory = () => {
+    setHistory([]);
   };
 
   const handleCopy = () => {
@@ -269,6 +361,12 @@ function App() {
         settings={settings}
         onUpdateSettings={setSettings}
         usage={usage}
+      />
+
+      <FileUploadModal 
+        isOpen={isFileUploadOpen}
+        onClose={() => setIsFileUploadOpen(false)}
+        onFileSelect={handleFileSelect}
       />
 
       {/* --- Mobile Drawers (Overlays) --- */}
@@ -311,6 +409,8 @@ function App() {
              <HistoryPanel 
                 history={history} 
                 onRestore={handleRestoreHistory}
+                onDelete={handleDeleteHistory}
+                onClearAll={handleClearAllHistory}
                 onClose={() => setMobileRightOpen(false)}
             />
         </div>
@@ -405,7 +505,7 @@ function App() {
                {/* Transcribe */}
                <button
                  onClick={handleTranscribe}
-                 disabled={!audioBlob || isProcessing}
+                 disabled={(!audioBlob && !uploadedFile) || isProcessing}
                  title="Transcribe Audio"
                  className={clsx(
                     "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
@@ -466,6 +566,7 @@ function App() {
                      appState === AppState.TRANSCRIBING ? "Transcribing..." : 
                      appState === AppState.PROMPTIFYING ? "Applying prompt magic..." :
                      error ? "" :
+                     uploadedFile ? "File Ready" :
                      appState !== AppState.IDLE ? "Ready" : ""}
                  </span>
                  
@@ -486,20 +587,34 @@ function App() {
                     </div>
                  )}
                </div>
-               <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
+               <div className="flex gap-3 items-center">
+                 <div className="flex-1">
+                   <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
+                 </div>
+                 <button
+                   onClick={() => setIsFileUploadOpen(true)}
+                   disabled={appState === AppState.RECORDING || isProcessing}
+                   className="flex-shrink-0 p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                   title="Upload audio file"
+                 >
+                   <Upload size={20} className="text-gray-600 dark:text-gray-400" />
+                 </button>
+               </div>
             </div>
 
           </div>
 
           {/* Output */}
           <div className="flex-1 overflow-hidden px-6 pb-6 flex flex-col min-h-0">
-             <div className="flex-1 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 p-6 overflow-y-auto custom-scrollbar shadow-sm">
+             <div className="flex-1 min-h-0 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 p-6 overflow-y-auto custom-scrollbar shadow-sm">
                 {currentDisplay ? (
-                    <ReactMarkdown 
-                        className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100"
-                    >
-                        {currentDisplay}
-                    </ReactMarkdown>
+                    <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
+                      <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100">
+                        <ReactMarkdown>
+                            {sanitizeText(currentDisplay)}
+                        </ReactMarkdown>
+                      </div>
+                    </MarkdownErrorBoundary>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
                         <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
@@ -511,12 +626,12 @@ function App() {
                 )}
              </div>
 
-             {/* Action Row */}
-             <div className="mt-4 flex justify-between items-center">
+             {/* Action Row - Fixed at bottom */}
+             <div className="flex-shrink-0 mt-4 flex justify-between items-center">
                  {!isConfirmClearOpen ? (
                      <button 
                         onClick={() => setIsConfirmClearOpen(true)}
-                        disabled={!rawTranscript && !audioBlob}
+                        disabled={!rawTranscript && !audioBlob && !uploadedFile}
                         className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-red-500 disabled:opacity-20 transition-colors uppercase tracking-wider px-2"
                      >
                         <Trash2 size={14} /> Clear
@@ -564,6 +679,8 @@ function App() {
                 <HistoryPanel 
                     history={history} 
                     onRestore={handleRestoreHistory}
+                    onDelete={handleDeleteHistory}
+                    onClearAll={handleClearAllHistory}
                     onClose={() => setShowRightPanel(false)}
                 />
             </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { SettingsData, ApiUsage } from '../types';
 import { X, Moon, Sun, Mic, Trash2, Cpu } from 'lucide-react';
 import clsx from 'clsx';
+import { fetchAvailableModels, GeminiModel } from '../services/geminiService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +12,13 @@ interface SettingsModalProps {
   usage: ApiUsage;
 }
 
+// Fallback models if API fetch fails
+const FALLBACK_MODELS: GeminiModel[] = [
+  { name: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', description: 'Fast & Efficient', supportedGenerationMethods: ['generateContent'] },
+  { name: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', description: 'Reasoning & Quality', supportedGenerationMethods: ['generateContent'] },
+  { name: 'gemini-2.0-flash-exp', displayName: 'Gemini 2.0 Flash (Experimental)', description: 'Latest experimental model', supportedGenerationMethods: ['generateContent'] },
+];
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -19,6 +27,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   usage
 }) => {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const [availableModels, setAvailableModels] = useState<GeminiModel[]>(FALLBACK_MODELS);
+  const [loadingModels, setLoadingModels] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,6 +37,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       });
     }
   }, [isOpen]);
+
+  // Fetch available models when modal opens and API key is available
+  useEffect(() => {
+    const loadModels = async () => {
+      if (!isOpen || !settings.apiKey || settings.apiKey.length < 30) return;
+      
+      setLoadingModels(true);
+      const models = await fetchAvailableModels(settings.apiKey);
+      
+      if (models.length > 0) {
+        setAvailableModels(models);
+      } else {
+        // Use fallback if fetch fails
+        setAvailableModels(FALLBACK_MODELS);
+      }
+      setLoadingModels(false);
+    };
+
+    loadModels();
+  }, [isOpen, settings.apiKey]);
 
   const handleDeleteKey = () => {
     onUpdateSettings({ ...settings, apiKey: '' });
@@ -110,15 +140,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
               <Cpu size={14} /> AI Model
+              {loadingModels && <span className="text-xs text-gray-400">(Loading...)</span>}
             </label>
             <div className="relative">
               <select
                 value={settings.modelId}
                 onChange={(e) => onUpdateSettings({ ...settings, modelId: e.target.value })}
-                className="w-full text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none appearance-none"
+                disabled={loadingModels}
+                className="w-full text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none appearance-none disabled:opacity-50"
               >
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast & Efficient)</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Reasoning & Quality)</option>
+                {availableModels.map(model => (
+                  <option key={model.name} value={model.name}>
+                    {model.displayName || model.name}
+                    {model.description && ` - ${model.description}`}
+                  </option>
+                ))}
               </select>
               {/* Custom arrow for better UI consistency */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
@@ -126,7 +162,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
             <p className="text-xs text-gray-400">
-                Use <strong>Flash</strong> for speed, <strong>Pro</strong> for complex prompt structuring.
+                Choose the model that best fits your needs. Newer models may have improved capabilities.
             </p>
           </div>
 
