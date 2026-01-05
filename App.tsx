@@ -10,6 +10,7 @@ import { PromptifyPanel } from './components/PromptifyPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FileUploadModal } from './components/FileUploadModal';
+import { InfoModal } from './components/InfoModal';
 
 // Error Boundary Component for Markdown Rendering
 class MarkdownErrorBoundary extends React.Component<
@@ -48,17 +49,17 @@ const DEFAULT_SETTINGS: SettingsData = {
   apiKey: '',
   microphoneId: '',
   saveApiKey: false,
-  modelId: 'gemini-1.5-flash' // Safe default
+  modelId: 'gemini-2.5-flash' // Default to Gemini 2.5 Flash (Stable)
 };
 
 function App() {
   // --- State ---
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.RAW);
-  
+
   const [rawTranscript, setRawTranscript] = useState<string>('');
   const [transformedTranscript, setTransformedTranscript] = useState<string>('');
-  
+
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -66,9 +67,10 @@ function App() {
   const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [usage, setUsage] = useState<ApiUsage>({ calls: 0, tokens: 0, cost: 0 });
   const [error, setError] = useState<string | null>(null);
-  
+
   // Layout State (Desktop)
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
@@ -96,7 +98,7 @@ function App() {
     console.log('🌐 Window size:', window.innerWidth, 'x', window.innerHeight);
     console.log('🔗 Current URL:', window.location.href);
     console.log('🌍 Hostname:', window.location.hostname);
-    
+
     // Detect if running on mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
@@ -118,7 +120,7 @@ function App() {
       try {
         const parsed = JSON.parse(stored);
         const apiKey = parsed.saveApiKey ? parsed.apiKey : '';
-        const modelId = parsed.modelId || 'gemini-1.5-flash';
+        const modelId = parsed.modelId || 'gemini-2.5-flash';
         setSettings({ ...DEFAULT_SETTINGS, ...parsed, apiKey, modelId });
       } catch (e) {
         console.error("Failed to parse settings");
@@ -130,10 +132,10 @@ function App() {
   useEffect(() => {
     const toSave = { ...settings };
     if (!settings.saveApiKey) {
-      toSave.apiKey = ''; 
+      toSave.apiKey = '';
     }
     localStorage.setItem('yappify_settings', JSON.stringify(toSave));
-    
+
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
       document.body.classList.add('bg-black');
@@ -146,28 +148,28 @@ function App() {
   // Model Validation
   useEffect(() => {
     const validate = async () => {
-        if (!settings.apiKey || settings.apiKey.length < 30) return;
-        
-        try {
-            const validModel = await validateAndGetModel(settings.apiKey, settings.modelId);
-            if (validModel !== settings.modelId) {
-                console.log(`Switched model from ${settings.modelId} to ${validModel}`);
-                setSettings(prev => ({ ...prev, modelId: validModel }));
-                setError(`Note: Model '${settings.modelId}' unavailable. Switched to '${validModel}'.`);
-                setTimeout(() => setError(null), 5000);
-            }
-        } catch (e) {
-            console.error("Model validation error", e);
+      if (!settings.apiKey || settings.apiKey.length < 30) return;
+
+      try {
+        const validModel = await validateAndGetModel(settings.apiKey, settings.modelId);
+        if (validModel !== settings.modelId) {
+          console.log(`Switched model from ${settings.modelId} to ${validModel}`);
+          setSettings(prev => ({ ...prev, modelId: validModel }));
+          setError(`Note: Model '${settings.modelId}' unavailable. Switched to '${validModel}'.`);
+          setTimeout(() => setError(null), 5000);
         }
+      } catch (e) {
+        console.error("Model validation error", e);
+      }
     };
-    
+
     // Debounce validation to only run after user stops typing
     const timeoutId = setTimeout(() => {
       if (settings.apiKey.length > 30) {
         validate();
       }
     }, 1000); // Wait 1 second after last keystroke
-    
+
     return () => clearTimeout(timeoutId);
   }, [settings.apiKey, settings.modelId]);
 
@@ -354,8 +356,8 @@ function App() {
 
   return (
     <div className="h-screen w-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 flex flex-col font-sans overflow-hidden">
-      
-      <SettingsModal 
+
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
@@ -363,311 +365,310 @@ function App() {
         usage={usage}
       />
 
-      <FileUploadModal 
+      <FileUploadModal
         isOpen={isFileUploadOpen}
         onClose={() => setIsFileUploadOpen(false)}
         onFileSelect={handleFileSelect}
       />
 
+      <InfoModal
+        isOpen={isInfoOpen}
+        onClose={() => setIsInfoOpen(false)}
+      />
+
       {/* --- Mobile Drawers (Overlays) --- */}
-      
+
       {/* Mobile Left Drawer (Promptify) */}
       <div className={clsx("fixed inset-0 z-40 lg:hidden pointer-events-none transition-opacity duration-300", mobileLeftOpen ? "opacity-100" : "opacity-0")}>
         {/* Backdrop */}
-        <div 
-            className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileLeftOpen ? "block" : "hidden")} 
-            onClick={() => setMobileLeftOpen(false)}
+        <div
+          className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileLeftOpen ? "block" : "hidden")}
+          onClick={() => setMobileLeftOpen(false)}
         />
         {/* Panel */}
         <div className={clsx(
-            "absolute left-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
-            mobileLeftOpen ? "translate-x-0" : "-translate-x-full"
+          "absolute left-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
+          mobileLeftOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-             <PromptifyPanel 
-                currentMode={promptMode}
-                onModeChange={(m) => { setPromptMode(m); setMobileLeftOpen(false); }}
-                customInstruction={customInstruction}
-                onCustomInstructionChange={setCustomInstruction}
-                disabled={isProcessing}
-                onClose={() => setMobileLeftOpen(false)}
-            />
+          <PromptifyPanel
+            currentMode={promptMode}
+            onModeChange={(m) => { setPromptMode(m); setMobileLeftOpen(false); }}
+            customInstruction={customInstruction}
+            onCustomInstructionChange={setCustomInstruction}
+            disabled={isProcessing}
+            onClose={() => setMobileLeftOpen(false)}
+            onFileUpload={() => { setIsFileUploadOpen(true); setMobileLeftOpen(false); }}
+            onInfoOpen={() => { setIsInfoOpen(true); setMobileLeftOpen(false); }}
+          />
         </div>
       </div>
 
       {/* Mobile Right Drawer (History) */}
       <div className={clsx("fixed inset-0 z-40 lg:hidden pointer-events-none transition-opacity duration-300", mobileRightOpen ? "opacity-100" : "opacity-0")}>
         {/* Backdrop */}
-        <div 
-            className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileRightOpen ? "block" : "hidden")} 
-            onClick={() => setMobileRightOpen(false)}
+        <div
+          className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileRightOpen ? "block" : "hidden")}
+          onClick={() => setMobileRightOpen(false)}
         />
         {/* Panel */}
         <div className={clsx(
-            "absolute right-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
-            mobileRightOpen ? "translate-x-0" : "translate-x-full"
+          "absolute right-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
+          mobileRightOpen ? "translate-x-0" : "translate-x-full"
         )}>
-             <HistoryPanel 
-                history={history} 
-                onRestore={handleRestoreHistory}
-                onDelete={handleDeleteHistory}
-                onClearAll={handleClearAllHistory}
-                onClose={() => setMobileRightOpen(false)}
-            />
+          <HistoryPanel
+            history={history}
+            onRestore={handleRestoreHistory}
+            onDelete={handleDeleteHistory}
+            onClearAll={handleClearAllHistory}
+            onClose={() => setMobileRightOpen(false)}
+          />
         </div>
       </div>
 
 
       {/* --- Main Grid Layout --- */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 h-full overflow-hidden">
-        
+
         {/* Left Panel - Promptify (Desktop Only) */}
         {showLeftPanel && (
-            <div className="hidden lg:flex lg:col-span-3 border-r border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
-            <PromptifyPanel 
-                currentMode={promptMode}
-                onModeChange={setPromptMode}
-                customInstruction={customInstruction}
-                onCustomInstructionChange={setCustomInstruction}
-                disabled={isProcessing}
-                onClose={() => setShowLeftPanel(false)}
+          <div className="hidden lg:flex lg:col-span-3 border-r border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
+            <PromptifyPanel
+              currentMode={promptMode}
+              onModeChange={setPromptMode}
+              customInstruction={customInstruction}
+              onCustomInstructionChange={setCustomInstruction}
+              disabled={isProcessing}
+              onClose={() => setShowLeftPanel(false)}
+              onFileUpload={() => setIsFileUploadOpen(true)}
+              onInfoOpen={() => setIsInfoOpen(true)}
             />
-            </div>
+          </div>
         )}
 
         {/* Center Panel - Main UI */}
-        <div className={`lg:col-span-${centerColSpan} col-span-1 flex flex-col h-full relative transition-all duration-300`}>
-          
+        <div className={`lg:col-span-${centerColSpan} col-span-1 flex flex-col h-full max-h-screen relative transition-all duration-300`}>
+
           {/* Header */}
-          <header className="flex justify-between items-center p-4 lg:p-6 lg:pb-2 relative">
-            
+          <header className="flex justify-between items-start p-4 lg:p-6 lg:pb-2 relative">
+
             {/* Mobile Left Button */}
-            <button 
-                onClick={() => setMobileLeftOpen(true)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
-                title="Promptify Modes"
+            <button
+              onClick={() => setMobileLeftOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
+              title="Promptify Modes"
             >
-                <Sparkles size={20} />
+              <Sparkles size={20} />
             </button>
 
             {/* Desktop Left Toggle (if closed) */}
             <div className="hidden lg:flex items-center gap-3">
-                {!showLeftPanel && (
-                    <button 
-                        onClick={() => setShowLeftPanel(true)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
-                        title="Open Sidebar"
-                    >
-                        <PanelLeftOpen size={20} />
-                    </button>
-                )}
-                <h1 className="text-xl font-bold tracking-tight">yappify-ai 2.0</h1>
+              {!showLeftPanel && (
+                <button
+                  onClick={() => setShowLeftPanel(true)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
+                  title="Open Sidebar"
+                >
+                  <PanelLeftOpen size={20} />
+                </button>
+              )}
+              <h1 className="text-xl font-bold tracking-tight">yappify-ai 2.0</h1>
             </div>
 
             {/* Mobile Centered Title */}
             <h1 className="lg:hidden text-lg font-bold tracking-tight absolute left-1/2 -translate-x-1/2">
-                yappify-ai 2.0
+              yappify-ai 2.0
             </h1>
 
-            <div className="flex items-center gap-2">
-                {/* Mobile Right Button */}
-                <button 
-                    onClick={() => setMobileRightOpen(true)}
-                    className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
-                    title="History"
-                >
-                    <Clock size={20} />
-                </button>
+            <div className="flex flex-col items-end gap-2">
+              {/* Mobile Right Button */}
+              <button
+                onClick={() => setMobileRightOpen(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
+                title="History"
+              >
+                <Clock size={20} />
+              </button>
 
-                {/* Desktop Right Toggle (if closed) */}
-                {!showRightPanel && (
-                    <button 
-                        onClick={() => setShowRightPanel(true)}
-                        className="hidden lg:block p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
-                        title="Open History"
-                    >
-                        <PanelRightOpen size={20} />
-                    </button>
-                )}
-                
-                <button 
+              {/* Desktop Right Toggle (if closed) */}
+              {!showRightPanel && (
+                <button
+                  onClick={() => setShowRightPanel(true)}
+                  className="hidden lg:block p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
+                  title="Open History"
+                >
+                  <PanelRightOpen size={20} />
+                </button>
+              )}
+
+              <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="Settings"
-                >
+              >
                 <Settings className="w-5 h-5 text-gray-500" />
-                </button>
+              </button>
             </div>
           </header>
 
           {/* Controls */}
           <div className="px-6 py-4 flex flex-col gap-6">
             <div className="flex items-center justify-center gap-6">
-               {/* Transcribe */}
-               <button
-                 onClick={handleTranscribe}
-                 disabled={(!audioBlob && !uploadedFile) || isProcessing}
-                 title="Transcribe Audio"
-                 className={clsx(
-                    "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
-                    appState === AppState.TRANSCRIBING
-                        ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
-                        : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
-                 )}
-               >
-                 {appState === AppState.TRANSCRIBING ? (
-                    <Loader2 className="animate-spin" size={24} />
-                 ) : (
-                    <PenTool size={24} />
-                 )}
-               </button>
+              {/* Transcribe */}
+              <button
+                onClick={handleTranscribe}
+                disabled={(!audioBlob && !uploadedFile) || isProcessing}
+                title="Transcribe Audio"
+                className={clsx(
+                  "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
+                  appState === AppState.TRANSCRIBING
+                    ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
+                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
+                )}
+              >
+                {appState === AppState.TRANSCRIBING ? (
+                  <Loader2 className="animate-spin" size={24} />
+                ) : (
+                  <PenTool size={24} />
+                )}
+              </button>
 
-               {/* Talk / Stop */}
-               <button
-                 onClick={toggleRecording}
-                 className={clsx(
-                    "w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95",
-                    appState === AppState.RECORDING
-                        ? "bg-black dark:bg-white text-white dark:text-black" 
-                        : "bg-white dark:bg-black border-4 border-gray-100 dark:border-gray-800 text-black dark:text-white hover:border-gray-200 dark:hover:border-gray-700" 
-                 )}
-               >
-                 {appState === AppState.RECORDING ? (
-                    <Square fill="currentColor" size={28} />
-                 ) : (
-                    <Mic size={32} />
-                 )}
-               </button>
+              {/* Talk / Stop */}
+              <button
+                onClick={toggleRecording}
+                className={clsx(
+                  "w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95",
+                  appState === AppState.RECORDING
+                    ? "bg-black dark:bg-white text-white dark:text-black"
+                    : "bg-white dark:bg-black border-4 border-gray-100 dark:border-gray-800 text-black dark:text-white hover:border-gray-200 dark:hover:border-gray-700"
+                )}
+              >
+                {appState === AppState.RECORDING ? (
+                  <Square fill="currentColor" size={28} />
+                ) : (
+                  <Mic size={32} />
+                )}
+              </button>
 
-               {/* Promptify */}
-               <button
-                 onClick={handlePromptify}
-                 disabled={!rawTranscript || isProcessing}
-                 title="Promptify (AI Transform)"
-                 className={clsx(
-                    "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
-                    appState === AppState.PROMPTIFYING
-                        ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
-                        : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
-                 )}
-               >
-                 {appState === AppState.PROMPTIFYING ? (
-                    <Loader2 className="animate-spin" size={24} />
-                 ) : (
-                    <Sparkles size={24} />
-                 )}
-               </button>
+              {/* Promptify */}
+              <button
+                onClick={handlePromptify}
+                disabled={!rawTranscript || isProcessing}
+                title="Promptify (AI Transform)"
+                className={clsx(
+                  "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
+                  appState === AppState.PROMPTIFYING
+                    ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
+                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
+                )}
+              >
+                {appState === AppState.PROMPTIFYING ? (
+                  <Loader2 className="animate-spin" size={24} />
+                ) : (
+                  <Sparkles size={24} />
+                )}
+              </button>
             </div>
 
             {/* Waveform */}
             <div className="w-full max-w-lg mx-auto">
-               <div className="flex justify-between items-end mb-2 px-1 h-6">
-                 <span className="text-xs font-mono text-purple-600 dark:text-purple-400 animate-pulse">
-                    {appState === AppState.RECORDING ? "Recording audio..." : 
-                     appState === AppState.TRANSCRIBING ? "Transcribing..." : 
-                     appState === AppState.PROMPTIFYING ? "Applying prompt magic..." :
-                     error ? "" :
-                     uploadedFile ? "File Ready" :
-                     appState !== AppState.IDLE ? "Ready" : ""}
-                 </span>
-                 
-                 {transformedTranscript && (
-                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
-                        <button 
-                            onClick={() => setViewMode(ViewMode.RAW)}
-                            className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.RAW ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
-                        >
-                            RAW
-                        </button>
-                        <button 
-                            onClick={() => setViewMode(ViewMode.TRANSFORMED)}
-                            className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.TRANSFORMED ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
-                        >
-                            AI
-                        </button>
-                    </div>
-                 )}
-               </div>
-               <div className="flex gap-3 items-center">
-                 <div className="flex-1">
-                   <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
-                 </div>
-                 <button
-                   onClick={() => setIsFileUploadOpen(true)}
-                   disabled={appState === AppState.RECORDING || isProcessing}
-                   className="flex-shrink-0 p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                   title="Upload audio file"
-                 >
-                   <Upload size={20} className="text-gray-600 dark:text-gray-400" />
-                 </button>
-               </div>
+              <div className="flex justify-between items-end mb-2 px-1 h-6">
+                <span className="text-xs font-mono text-purple-600 dark:text-purple-400 animate-pulse">
+                  {appState === AppState.RECORDING ? "Recording audio..." :
+                    appState === AppState.TRANSCRIBING ? "Transcribing..." :
+                      appState === AppState.PROMPTIFYING ? "Applying prompt magic..." :
+                        error ? "" :
+                          uploadedFile ? "File Ready" :
+                            appState !== AppState.IDLE ? "Ready" : ""}
+                </span>
+
+                {transformedTranscript && (
+                  <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
+                    <button
+                      onClick={() => setViewMode(ViewMode.RAW)}
+                      className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.RAW ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
+                    >
+                      RAW
+                    </button>
+                    <button
+                      onClick={() => setViewMode(ViewMode.TRANSFORMED)}
+                      className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.TRANSFORMED ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
+                    >
+                      AI
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="w-full">
+                <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
+              </div>
             </div>
 
           </div>
 
           {/* Output */}
           <div className="flex-1 overflow-hidden px-6 pb-6 flex flex-col min-h-0">
-             <div className="flex-1 min-h-0 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 p-6 overflow-y-auto custom-scrollbar shadow-sm">
-                {currentDisplay ? (
-                    <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
-                      <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100">
-                        <ReactMarkdown>
-                            {sanitizeText(currentDisplay)}
-                        </ReactMarkdown>
-                      </div>
-                    </MarkdownErrorBoundary>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
-                        <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                            <Mic size={32} className="opacity-40 text-black dark:text-white" />
-                        </div>
-                        <p className="text-lg font-bold text-gray-500 dark:text-gray-400">Ready to yapp.</p>
-                        <p className="text-sm mt-2 opacity-70 font-medium">Record, Transcribe, then Promptify.</p>
-                    </div>
-                )}
-             </div>
+            <div className="flex-1 min-h-0 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 p-6 overflow-y-auto custom-scrollbar shadow-sm">
+              {currentDisplay ? (
+                <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
+                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100">
+                    <ReactMarkdown>
+                      {sanitizeText(currentDisplay)}
+                    </ReactMarkdown>
+                  </div>
+                </MarkdownErrorBoundary>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
+                  <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                    <Mic size={32} className="opacity-40 text-black dark:text-white" />
+                  </div>
+                  <p className="text-lg font-bold text-gray-500 dark:text-gray-400">Ready to yapp.</p>
+                  <p className="text-sm mt-2 opacity-70 font-medium">Record, Transcribe, then Promptify.</p>
+                </div>
+              )}
+            </div>
 
-             {/* Action Row - Fixed at bottom */}
-             <div className="flex-shrink-0 mt-4 flex justify-between items-center">
-                 {!isConfirmClearOpen ? (
-                     <button 
-                        onClick={() => setIsConfirmClearOpen(true)}
-                        disabled={!rawTranscript && !audioBlob && !uploadedFile}
-                        className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-red-500 disabled:opacity-20 transition-colors uppercase tracking-wider px-2"
-                     >
-                        <Trash2 size={14} /> Clear
-                     </button>
-                 ) : (
-                    <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
-                        <span className="text-xs text-gray-500 font-medium mr-2">Save to history?</span>
-                        <button onClick={() => handleClear(true)} className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-md hover:opacity-80">Yes</button>
-                        <button onClick={() => handleClear(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-800 text-black dark:text-white text-xs font-bold rounded-md hover:bg-red-100 hover:text-red-600">No</button>
-                        <button onClick={() => setIsConfirmClearOpen(false)} className="px-2 py-1 text-gray-400 hover:text-gray-600"><XIcon size={14}/></button>
-                    </div>
-                 )}
+            {/* Action Row - Fixed at bottom */}
+            <div className="flex-shrink-0 mt-4 flex justify-between items-center">
+              {!isConfirmClearOpen ? (
+                <button
+                  onClick={() => setIsConfirmClearOpen(true)}
+                  disabled={!rawTranscript && !audioBlob && !uploadedFile}
+                  className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-red-500 disabled:opacity-20 transition-colors uppercase tracking-wider px-2"
+                >
+                  <Trash2 size={14} /> Clear
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                  <span className="text-xs text-gray-500 font-medium mr-2">Save to history?</span>
+                  <button onClick={() => handleClear(true)} className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-md hover:opacity-80">Yes</button>
+                  <button onClick={() => handleClear(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-800 text-black dark:text-white text-xs font-bold rounded-md hover:bg-red-100 hover:text-red-600">No</button>
+                  <button onClick={() => setIsConfirmClearOpen(false)} className="px-2 py-1 text-gray-400 hover:text-gray-600"><XIcon size={14} /></button>
+                </div>
+              )}
 
-                 <div className="flex gap-2">
-                    <button 
-                        onClick={handleCopy}
-                        disabled={!currentDisplay}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
-                    >
-                        <Copy size={14} /> Copy
-                    </button>
-                    <button 
-                        onClick={handleDownload}
-                        disabled={!currentDisplay}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
-                    >
-                        <Download size={14} /> Export
-                    </button>
-                 </div>
-             </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopy}
+                  disabled={!currentDisplay}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+                >
+                  <Copy size={14} /> Copy
+                </button>
+                <button
+                  onClick={handleDownload}
+                  disabled={!currentDisplay}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+                >
+                  <Download size={14} /> Export
+                </button>
+              </div>
+            </div>
           </div>
-          
+
           {/* Error Toast */}
           {error && (
             <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-in fade-in slide-in-from-top-2 z-50">
-                {error}
+              {error}
             </div>
           )}
 
@@ -675,15 +676,15 @@ function App() {
 
         {/* Right Panel - History (Desktop Only) */}
         {showRightPanel && (
-            <div className="hidden lg:flex lg:col-span-3 border-l border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
-                <HistoryPanel 
-                    history={history} 
-                    onRestore={handleRestoreHistory}
-                    onDelete={handleDeleteHistory}
-                    onClearAll={handleClearAllHistory}
-                    onClose={() => setShowRightPanel(false)}
-                />
-            </div>
+          <div className="hidden lg:flex lg:col-span-3 border-l border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
+            <HistoryPanel
+              history={history}
+              onRestore={handleRestoreHistory}
+              onDelete={handleDeleteHistory}
+              onClearAll={handleClearAllHistory}
+              onClose={() => setShowRightPanel(false)}
+            />
+          </div>
         )}
 
       </div>
@@ -691,8 +692,8 @@ function App() {
   );
 }
 
-const XIcon = ({size}: {size:number}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+const XIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
 );
 
 export default App;

@@ -15,16 +15,16 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onRestore, 
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-            <Clock size={12} /> Session History
-        </h3>
-        <button 
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title="Close history"
+        <button
+          onClick={onClose}
+          className="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Close history"
         >
-            <PanelRightClose size={16} />
+          <PanelRightClose size={16} />
         </button>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+          <Clock size={12} /> Session History
+        </h3>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
@@ -64,7 +64,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onRestore, 
                   {item.transformed || item.raw}
                 </p>
                 <div className="mt-2 flex items-center text-[10px] text-gray-400 group-hover:text-purple-600 transition-colors">
-                   Restore <ChevronRight size={10} className="ml-1" />
+                  Restore <ChevronRight size={10} className="ml-1" />
                 </div>
               </button>
               <button
