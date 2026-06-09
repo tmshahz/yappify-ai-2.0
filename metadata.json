@@ -1,5 +1,5 @@
 {
-  "name": "yappify-ai 2.0",
+  "name": "Yappify",
   "description": "Minimalist voice-to-text and AI prompt structuring tool.",
   "requestFramePermissions": [
     "microphone"

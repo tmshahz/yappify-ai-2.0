@@ -1,235 +1,353 @@
-import React, { useEffect, useState } from 'react';
-import { SettingsData, ApiUsage } from '../types';
-import { X, Moon, Sun, Mic, Trash2, Cpu } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BarChart3, Cpu, Mic, Moon, Settings, Sun, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
-import { fetchAvailableModels, GeminiModel } from '../services/geminiService';
+import { ApiUsage, SettingsData } from '../types';
+import {
+  CURATED_GEMINI_MODELS,
+  DEFAULT_MODEL_ID,
+  fetchAvailableModels,
+} from '../services/geminiService';
+import { Modal } from './Modal';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: SettingsData;
-  onUpdateSettings: (s: SettingsData) => void;
+  onUpdateSettings: (settings: SettingsData) => void;
   usage: ApiUsage;
+  onOpenAnalytics: () => void;
 }
 
-// Fallback models if API fetch fails
-const FALLBACK_MODELS: GeminiModel[] = [
-  { name: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', description: 'Fast & Efficient', supportedGenerationMethods: ['generateContent'] },
-  { name: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', description: 'Reasoning & Quality', supportedGenerationMethods: ['generateContent'] },
-  { name: 'gemini-2.0-flash-exp', displayName: 'Gemini 2.0 Flash (Experimental)', description: 'Latest experimental model', supportedGenerationMethods: ['generateContent'] },
-];
+function normalizeSettings(settings: SettingsData): SettingsData {
+  return {
+    theme: settings?.theme === 'dark' ? 'dark' : 'light',
+    apiKey: typeof settings?.apiKey === 'string' ? settings.apiKey : '',
+    microphoneId: typeof settings?.microphoneId === 'string' ? settings.microphoneId : '',
+    saveApiKey: Boolean(settings?.saveApiKey),
+    modelId:
+      typeof settings?.modelId === 'string' && settings.modelId.length > 0
+        ? settings.modelId
+        : DEFAULT_MODEL_ID,
+  };
+}
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({
+function safeUsage(usage?: ApiUsage): ApiUsage {
+  const calls = Number(usage?.calls);
+  const inputTokens = Number(usage?.inputTokens);
+  const outputTokens = Number(usage?.outputTokens);
+  const tokens = Number(usage?.tokens);
+  const cost = Number(usage?.cost);
+
+  return {
+    calls: Number.isFinite(calls) ? calls : 0,
+    inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+    outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+    tokens: Number.isFinite(tokens) ? tokens : 0,
+    cost: Number.isFinite(cost) ? cost : 0,
+  };
+}
+
+function formatUsageSummary(usage: ApiUsage): string {
+  const safe = safeUsage(usage);
+  return `${safe.calls} calls · ${safe.tokens.toLocaleString()} est. tokens · $${safe.cost.toFixed(4)}`;
+}
+
+class SettingsContentErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onClose: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[SettingsModal] render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Something went wrong while loading settings. You can close this dialog and try again.
+          </p>
+          <button
+            type="button"
+            onClick={this.props.onClose}
+            className="w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+          >
+            Close Settings
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const SettingsModalContent: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   settings,
   onUpdateSettings,
-  usage
+  usage,
+  onOpenAnalytics,
 }) => {
+  const safeSettings = useMemo(() => normalizeSettings(settings), [settings]);
+  const safeUsageValues = useMemo(() => safeUsage(usage), [usage]);
+
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
-  const [availableModels, setAvailableModels] = useState<GeminiModel[]>(FALLBACK_MODELS);
+  const [availableModelIds, setAvailableModelIds] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      navigator.mediaDevices.enumerateDevices().then(devices => {
-        setMicrophones(devices.filter(d => d.kind === 'audioinput'));
-      });
+    if (!isOpen) return;
+
+    const mediaDevices = navigator.mediaDevices;
+    if (!mediaDevices?.enumerateDevices) {
+      setMicrophones([]);
+      return;
     }
+
+    mediaDevices
+      .enumerateDevices()
+      .then((devices) => setMicrophones(devices.filter((device) => device.kind === 'audioinput')))
+      .catch((error) => {
+        console.warn('[SettingsModal] enumerateDevices failed:', error);
+        setMicrophones([]);
+      });
   }, [isOpen]);
 
-  // Fetch available models when modal opens and API key is available
   useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+
     const loadModels = async () => {
-      if (!isOpen || !settings.apiKey || settings.apiKey.length < 30) return;
-      
-      setLoadingModels(true);
-      const models = await fetchAvailableModels(settings.apiKey);
-      
-      if (models.length > 0) {
-        setAvailableModels(models);
-      } else {
-        // Use fallback if fetch fails
-        setAvailableModels(FALLBACK_MODELS);
+      if (!safeSettings.apiKey || safeSettings.apiKey.length < 30) {
+        setAvailableModelIds([]);
+        setLoadingModels(false);
+        return;
       }
-      setLoadingModels(false);
+
+      setLoadingModels(true);
+      try {
+        const models = await fetchAvailableModels(safeSettings.apiKey);
+        if (!cancelled) {
+          setAvailableModelIds(models.map((model) => model.name));
+        }
+      } catch (error) {
+        console.warn('[SettingsModal] fetchAvailableModels failed:', error);
+        if (!cancelled) {
+          setAvailableModelIds([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingModels(false);
+        }
+      }
     };
 
-    loadModels();
-  }, [isOpen, settings.apiKey]);
+    void loadModels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, safeSettings.apiKey]);
+
+  const curatedModels = useMemo(() => {
+    if (availableModelIds.length === 0) return CURATED_GEMINI_MODELS;
+    const liveModels = CURATED_GEMINI_MODELS.filter((model) =>
+      availableModelIds.includes(model.name)
+    );
+    return liveModels.length > 0 ? liveModels : CURATED_GEMINI_MODELS;
+  }, [availableModelIds]);
+
+  const selectedUnavailable =
+    availableModelIds.length > 0 && !availableModelIds.includes(safeSettings.modelId);
 
   const handleDeleteKey = () => {
-    onUpdateSettings({ ...settings, apiKey: '' });
+    onUpdateSettings({ ...safeSettings, apiKey: '' });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
-          <h2 className="text-lg font-semibold dark:text-white">Settings</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      title="Settings"
+      onClose={onClose}
+      align="start"
+      maxWidth="md"
+      icon={
+        <div className="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/30">
+          <Settings size={18} className="text-purple-600 dark:text-purple-400" />
         </div>
-
-        {/* Body */}
-        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-          
-          {/* Theme */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
-            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-              <button
-                onClick={() => onUpdateSettings({ ...settings, theme: 'light' })}
-                className={clsx("p-1.5 rounded-md transition-all", settings.theme === 'light' ? 'bg-white shadow-sm text-black' : 'text-gray-400')}
-              >
-                <Sun size={16} />
-              </button>
-              <button
-                onClick={() => onUpdateSettings({ ...settings, theme: 'dark' })}
-                className={clsx("p-1.5 rounded-md transition-all", settings.theme === 'dark' ? 'bg-gray-700 shadow-sm text-white' : 'text-gray-400')}
-              >
-                <Moon size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Live Transcription Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Transcription</span>
-              <p className="text-xs text-gray-400 mt-0.5">Best effort preview during recording</p>
-            </div>
+      }
+    >
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
+          <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
             <button
-              onClick={() => onUpdateSettings({ ...settings, liveTranscription: !settings.liveTranscription })}
+              type="button"
+              onClick={() => onUpdateSettings({ ...safeSettings, theme: 'light' })}
               className={clsx(
-                "w-11 h-6 rounded-full transition-colors relative",
-                settings.liveTranscription ? "bg-purple-600" : "bg-gray-200 dark:bg-gray-700"
+                'rounded-md p-1.5 transition-all',
+                safeSettings.theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-gray-400'
               )}
             >
-              <div className={clsx(
-                "w-4 h-4 bg-white rounded-full absolute top-1 transition-transform",
-                settings.liveTranscription ? "left-6" : "left-1"
-              )} />
+              <Sun size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateSettings({ ...safeSettings, theme: 'dark' })}
+              className={clsx(
+                'rounded-md p-1.5 transition-all',
+                safeSettings.theme === 'dark' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400'
+              )}
+            >
+              <Moon size={16} />
             </button>
           </div>
+        </div>
 
-          {/* Microphone Select */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <Mic size={14} /> Microphone
-            </label>
-            <select
-              value={settings.microphoneId}
-              onChange={(e) => onUpdateSettings({ ...settings, microphoneId: e.target.value })}
-              className="w-full text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
-            >
-              <option value="">Default Microphone</option>
-              {microphones.map(mic => (
-                <option key={mic.deviceId} value={mic.deviceId}>
-                  {mic.label || `Microphone ${mic.deviceId.slice(0, 5)}...`}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Mic size={14} /> Microphone
+          </label>
+          <select
+            value={safeSettings.microphoneId}
+            onChange={(event) =>
+              onUpdateSettings({ ...safeSettings, microphoneId: event.target.value })
+            }
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">Default Microphone</option>
+            {microphones.map((mic) => (
+              <option key={mic.deviceId || mic.label} value={mic.deviceId}>
+                {mic.label || `Microphone ${(mic.deviceId || 'device').slice(0, 5)}...`}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Model ID (Dropdown) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <Cpu size={14} /> AI Model
-              {loadingModels && <span className="text-xs text-gray-400">(Loading...)</span>}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Cpu size={14} /> AI Model
+            {loadingModels && (
+              <span className="text-xs text-gray-400">(Checking availability...)</span>
+            )}
+          </label>
+          <select
+            value={safeSettings.modelId}
+            onChange={(event) => onUpdateSettings({ ...safeSettings, modelId: event.target.value })}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          >
+            {curatedModels.map((model) => (
+              <option key={model.name} value={model.name}>
+                {model.displayName} - {model.description}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400">
+            Yappify is tuned for Gemini 2.5 Flash. Future 2.5+ Flash models can be added here
+            without silently changing your selection.
+          </p>
+          {selectedUnavailable && (
+            <p className="text-xs text-red-500">
+              The selected model was not returned by your API key. Choose an available 2.5+ Flash
+              model before processing.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Gemini API Key
             </label>
-            <div className="relative">
-              <select
-                value={settings.modelId}
-                onChange={(e) => onUpdateSettings({ ...settings, modelId: e.target.value })}
-                disabled={loadingModels}
-                className="w-full text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none appearance-none disabled:opacity-50"
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Save locally</span>
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateSettings({ ...safeSettings, saveApiKey: !safeSettings.saveApiKey })
+                }
+                className={clsx(
+                  'relative h-5 w-9 rounded-full transition-colors',
+                  safeSettings.saveApiKey ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
+                )}
               >
-                {availableModels.map(model => (
-                  <option key={model.name} value={model.name}>
-                    {model.displayName || model.name}
-                    {model.description && ` - ${model.description}`}
-                  </option>
-                ))}
-              </select>
-              {/* Custom arrow for better UI consistency */}
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m1 1 4 4 4-4"/></svg>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">
-                Choose the model that best fits your needs. Newer models may have improved capabilities.
-            </p>
-          </div>
-
-          {/* API Key */}
-          <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Gemini API Key</label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Save locally</span>
-                <button
-                    onClick={() => onUpdateSettings({ ...settings, saveApiKey: !settings.saveApiKey })}
-                    className={clsx(
-                    "w-9 h-5 rounded-full transition-colors relative",
-                    settings.saveApiKey ? "bg-purple-600" : "bg-gray-200 dark:bg-gray-700"
-                    )}
-                >
-                    <div className={clsx(
-                    "w-3 h-3 bg-white rounded-full absolute top-1 transition-transform",
-                    settings.saveApiKey ? "left-5" : "left-1"
-                    )} />
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-                <input
-                    type="password"
-                    value={settings.apiKey}
-                    onChange={(e) => onUpdateSettings({ ...settings, apiKey: e.target.value })}
-                    placeholder="Enter your Gemini API Key"
-                    className="flex-1 text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+                <div
+                  className={clsx(
+                    'absolute top-1 h-3 w-3 rounded-full bg-white transition-transform',
+                    safeSettings.saveApiKey ? 'left-5' : 'left-1'
+                  )}
                 />
-                <button 
-                    onClick={handleDeleteKey}
-                    title="Delete API Key"
-                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-gray-200 dark:border-gray-700"
-                >
-                    <Trash2 size={18} />
-                </button>
+              </button>
             </div>
-            <p className="text-xs text-gray-400">
-                {settings.saveApiKey 
-                    ? "Key is saved in your browser's local storage." 
-                    : "Key is only held in memory for this session."}
-            </p>
           </div>
+
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={safeSettings.apiKey}
+              onChange={(event) => onUpdateSettings({ ...safeSettings, apiKey: event.target.value })}
+              placeholder="Enter your Gemini API Key"
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={handleDeleteKey}
+              title="Delete API Key"
+              className="rounded-lg border border-gray-200 p-2 text-red-500 transition-colors hover:bg-red-50 dark:border-gray-700 dark:hover:bg-red-900/20"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            {safeSettings.saveApiKey
+              ? "Key is saved in your browser's local storage."
+              : 'Key is only held in memory for this session.'}
+          </p>
         </div>
 
-        {/* Footer: Usage Stats */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-6 border-t border-gray-100 dark:border-gray-800">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Session Activity</h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">{usage.calls}</div>
-              <div className="text-[10px] text-gray-500 uppercase">Calls</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">{usage.tokens.toLocaleString()}</div>
-              <div className="text-[10px] text-gray-500 uppercase">Est. Tokens</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">${usage.cost.toFixed(4)}</div>
-              <div className="text-[10px] text-gray-500 uppercase">Est. Cost</div>
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={onOpenAnalytics}
+          className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-purple-300 dark:border-gray-800 dark:bg-gray-800/50 dark:hover:border-purple-700"
+        >
+          <span className="flex items-center gap-3 text-left">
+            <span className="rounded-lg bg-purple-100 p-2 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+              <BarChart3 size={18} />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-gray-800 dark:text-gray-100">
+                Usage Analytics
+              </span>
+              <span className="block text-xs text-gray-400">{formatUsageSummary(safeUsageValues)}</span>
+            </span>
+          </span>
+          <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+            View
+          </span>
+        </button>
       </div>
-    </div>
+    </Modal>
+  );
+};
+
+export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
+  if (!props.isOpen) return null;
+
+  return (
+    <SettingsContentErrorBoundary onClose={props.onClose}>
+      <SettingsModalContent {...props} />
+    </SettingsContentErrorBoundary>
   );
 };

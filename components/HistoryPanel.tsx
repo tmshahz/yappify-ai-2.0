@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { HistoryItem, PromptMode } from '../types';
+import { HistoryItem } from '../types';
 import { Clock, ChevronRight, PanelRightClose, Trash2, Archive } from 'lucide-react';
 
 interface HistoryPanelProps {
   history: HistoryItem[];
-  onRestore: (item: HistoryItem) => void;
+  onPreview: (item: HistoryItem) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
   onClose: () => void;
 }
 
-export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onRestore, onDelete, onClearAll, onClose }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onPreview, onDelete, onClearAll, onClose }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const getPreview = (item: HistoryItem) => (item.transformed || item.raw).replace(/\s+/g, ' ').trim();
+
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between mb-4">
@@ -47,24 +50,22 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onRestore, 
               className="relative w-full p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
             >
               <button
-                onClick={() => onRestore(item)}
+                onClick={() => onPreview(item)}
                 className="w-full text-left"
               >
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-[10px] text-gray-400 font-mono">
-                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                   </span>
-                  {item.transformed && (
-                    <span className="text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
-                      AI
-                    </span>
-                  )}
+                  <span className="text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
+                    {item.modeLabel}
+                  </span>
                 </div>
                 <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 font-medium pr-8">
-                  {item.transformed || item.raw}
+                  {getPreview(item)}
                 </p>
                 <div className="mt-2 flex items-center text-[10px] text-gray-400 group-hover:text-purple-600 transition-colors">
-                  Restore <ChevronRight size={10} className="ml-1" />
+                  Preview <ChevronRight size={10} className="ml-1" />
                 </div>
               </button>
               <button

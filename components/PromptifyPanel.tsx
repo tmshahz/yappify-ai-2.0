@@ -1,45 +1,35 @@
-import React, { useEffect } from 'react';
-import { PromptMode } from '../types';
+import React from 'react';
+import { PromptMode, PromptModeDefinition } from '../types';
 import clsx from 'clsx';
-import { Settings2, Zap, FileText, Sparkles, ExternalLink, PanelLeftClose, Upload, Info } from 'lucide-react';
+import { Zap, FileText, Sparkles, ExternalLink, PanelLeftClose, Info, Pencil, X } from 'lucide-react';
 
 interface PromptifyPanelProps {
   currentMode: PromptMode;
   onModeChange: (mode: PromptMode) => void;
-  customInstruction: string;
-  onCustomInstructionChange: (val: string) => void;
+  modes: PromptModeDefinition[];
   disabled: boolean;
   onClose: () => void;
-  onFileUpload?: () => void;
   onInfoOpen?: () => void;
+  onModeInfo: (mode: PromptModeDefinition) => void;
+  onEditCustomMode: (mode: PromptModeDefinition) => void;
+  onResetCustomMode: (mode: PromptModeDefinition) => void;
 }
 
 export const PromptifyPanel: React.FC<PromptifyPanelProps> = ({
   currentMode,
   onModeChange,
-  customInstruction,
-  onCustomInstructionChange,
+  modes,
   disabled,
   onClose,
-  onFileUpload,
-  onInfoOpen
+  onInfoOpen,
+  onModeInfo,
+  onEditCustomMode,
+  onResetCustomMode,
 }) => {
-  const modes = [
-    { id: PromptMode.ENHANCER, icon: Sparkles, label: 'Enhancer' },
-    { id: PromptMode.DEEP, icon: Settings2, label: 'Deep Structuring' },
-    { id: PromptMode.NOTES, icon: Zap, label: 'Quick Notes' },
-    { id: PromptMode.CUSTOM, icon: FileText, label: 'Custom Mode' },
-  ];
-
-  // Load custom instruction from local storage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('yappify_custom_prompt');
-    if (saved) onCustomInstructionChange(saved);
-  }, []);
-
-  const handleCustomChange = (val: string) => {
-    onCustomInstructionChange(val);
-    localStorage.setItem('yappify_custom_prompt', val);
+  const getIcon = (mode: PromptModeDefinition) => {
+    if (mode.id === PromptMode.ENHANCER) return Sparkles;
+    if (mode.id === PromptMode.NOTES) return Zap;
+    return FileText;
   };
 
   return (
@@ -62,73 +52,91 @@ export const PromptifyPanel: React.FC<PromptifyPanelProps> = ({
       {/* Mode List */}
       <div className="flex flex-col gap-3">
         {modes.map((m) => {
-          const Icon = m.icon;
+          const Icon = getIcon(m);
           const isSelected = currentMode === m.id;
           return (
-            <button
+            <div
               key={m.id}
-              onClick={() => onModeChange(m.id)}
-              disabled={disabled}
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              onClick={() => {
+                if (!disabled) onModeChange(m.id);
+              }}
+              onKeyDown={(event) => {
+                if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  onModeChange(m.id);
+                }
+              }}
               className={clsx(
-                "group relative w-full text-left p-3 rounded-xl transition-all duration-200",
+                "group relative w-full rounded-xl transition-all duration-200",
                 "border hover:border-purple-300 dark:hover:border-purple-700",
+                disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                 isSelected
                   ? "border-purple-600 dark:border-purple-500 shadow-sm"
                   : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
               )}
             >
-              <div className="flex items-center gap-3">
-                <div className={clsx(
-                  "p-2 rounded-lg transition-colors",
-                  isSelected ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-hover:bg-purple-50 dark:group-hover:bg-purple-900/20"
-                )}>
-                  <Icon size={18} />
+              <div className="flex items-center gap-2 p-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  <div className={clsx(
+                    "p-2 rounded-lg transition-colors",
+                    isSelected ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-hover:bg-purple-50 dark:group-hover:bg-purple-900/20"
+                  )}>
+                    <Icon size={18} />
+                  </div>
+                  <span className={clsx(
+                    "truncate text-sm font-medium",
+                    isSelected ? "text-purple-900 dark:text-purple-100" : "text-gray-700 dark:text-gray-300"
+                  )}>
+                    {m.title}
+                  </span>
                 </div>
-                <span className={clsx(
-                  "text-sm font-medium",
-                  isSelected ? "text-purple-900 dark:text-purple-100" : "text-gray-700 dark:text-gray-300"
-                )}>
-                  {m.label}
-                </span>
+
+                <div className="flex items-center gap-1">
+                  {!m.isCustom ? (
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onModeInfo(m);
+                      }}
+                      className="p-1.5 rounded-md text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                      title={`About ${m.title}`}
+                    >
+                      <Info size={14} />
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditCustomMode(m);
+                        }}
+                        disabled={disabled}
+                        className="p-1.5 rounded-md text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors disabled:opacity-50"
+                        title={`Edit ${m.title}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onResetCustomMode(m);
+                        }}
+                        disabled={disabled}
+                        className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                        title={`Reset ${m.title}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
-
-      {/* Custom Input */}
-      {currentMode === PromptMode.CUSTOM && (
-        <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-2">
-          <p className="text-xs text-gray-500 mb-2">
-            Transform your text however you like. Add your own custom instructions below.
-          </p>
-          <textarea
-            value={customInstruction}
-            onChange={(e) => handleCustomChange(e.target.value)}
-            placeholder="e.g., Rewrite this as a 17th-century pirate..."
-            className="w-full h-32 p-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
-            disabled={disabled}
-          />
-        </div>
-      )}
-
-      {/* Upload File Button (after Custom Mode) */}
-      {onFileUpload && (
-        <div className="mt-3">
-          <button
-            onClick={onFileUpload}
-            disabled={disabled}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="p-2 rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-              <Upload size={18} />
-            </div>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Upload Audio File
-            </span>
-          </button>
-        </div>
-      )}
 
       {/* Bottom Section with Info and About */}
       <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 space-y-3">

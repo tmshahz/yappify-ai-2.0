@@ -1,7 +1,8 @@
-import { PromptMode } from "../types";
+import type { TranslateSettings, UploadProcessingType, UsageResult } from '../types';
 
-const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-const COST_PER_1M_TOKENS = 0.10; // Rough estimate for Flash
+const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+export const DEFAULT_MODEL_ID = 'gemini-2.5-flash';
 
 export interface GeminiModel {
   name: string;
@@ -10,223 +11,242 @@ export interface GeminiModel {
   supportedGenerationMethods: string[];
 }
 
-/**
- * Fetches all available models from the Gemini API.
- * Returns models that support generateContent.
- */
+export const CURATED_GEMINI_MODELS: GeminiModel[] = [
+  {
+    name: 'gemini-2.5-flash',
+    displayName: 'Gemini 2.5 Flash',
+    description: 'Recommended',
+    supportedGenerationMethods: ['generateContent'],
+  },
+  {
+    name: 'gemini-2.5-flash-lite',
+    displayName: 'Gemini 2.5 Flash Lite',
+    description: 'Lower latency',
+    supportedGenerationMethods: ['generateContent'],
+  },
+];
+
+const GEMINI_25_FLASH_RATES = {
+  textInputPerMillion: 0.30,
+  audioInputPerMillion: 1.00,
+  outputPerMillion: 2.50,
+};
+
 export const fetchAvailableModels = async (apiKey: string): Promise<GeminiModel[]> => {
   if (!apiKey) return [];
-  
+
   try {
-    const res = await fetch(`${BASE_URL}/models?key=${apiKey}`);
-    if (!res.ok) {
-      console.warn(`Failed to fetch models: ${res.status}`);
-      return [];
-    }
-    
-    const data = await res.json();
+    const response = await fetch(`${BASE_URL}/models?key=${apiKey}`);
+    if (!response.ok) return [];
+
+    const data = await response.json();
     const models = data.models || [];
-    
-    // Filter to only models that support generateContent and are Gemini models
-    const generativeModels = models
-      .filter((m: any) => 
-        m.supportedGenerationMethods?.includes('generateContent') &&
-        m.name.includes('gemini')
+
+    return models
+      .filter(
+        (model: any) =>
+          model.supportedGenerationMethods?.includes('generateContent') &&
+          model.name.includes('gemini')
       )
-      .map((m: any) => ({
-        name: m.name.replace(/^models\//, ''),
-        displayName: m.displayName || m.name,
-        description: m.description || '',
-        supportedGenerationMethods: m.supportedGenerationMethods || []
+      .map((model: any) => ({
+        name: model.name.replace(/^models\//, ''),
+        displayName: model.displayName || model.name,
+        description: model.description || '',
+        supportedGenerationMethods: model.supportedGenerationMethods || [],
       }));
-    
-    return generativeModels;
   } catch (error) {
-    console.error("Error fetching models:", error);
+    console.error('Error fetching models:', error);
     return [];
   }
 };
 
-/**
- * Helper to construct the generation URL.
- */
+export const validateModelAvailable = async (apiKey: string, modelId: string): Promise<boolean> => {
+  if (!apiKey) return true;
+  const models = await fetchAvailableModels(apiKey);
+  if (models.length === 0) return true;
+  return models.some((model) => model.name === modelId);
+};
+
 function buildGenerateUrl(model: string, apiKey: string): string {
-  // Ensure model id doesn't double-prefix 'models/'
   const cleanModel = model.replace(/^models\//, '');
   return `${BASE_URL}/models/${cleanModel}:generateContent?key=${apiKey}`;
 }
 
-/**
- * Validates if the preferred model exists. If not, finds a valid fallback.
- * Returns the valid model ID.
- */
-export const validateAndGetModel = async (apiKey: string, preferredModel: string): Promise<string> => {
-  if (!apiKey) throw new Error("API Key is missing");
+function estimateUsage(
+  usageMeta: any,
+  outputText: string,
+  inputFallbackChars: number,
+  inputKind: 'text' | 'audio'
+): UsageResult {
+  const inputTokens = Math.floor(
+    usageMeta?.promptTokenCount ?? Math.max(1, Math.ceil(inputFallbackChars / 4))
+  );
+  const outputTokens = Math.floor(
+    usageMeta?.candidatesTokenCount ?? Math.max(1, Math.ceil(outputText.length / 4))
+  );
+  const tokens = Math.floor(usageMeta?.totalTokenCount ?? inputTokens + outputTokens);
+  const inputRate =
+    inputKind === 'audio'
+      ? GEMINI_25_FLASH_RATES.audioInputPerMillion
+      : GEMINI_25_FLASH_RATES.textInputPerMillion;
+  const cost =
+    (inputTokens / 1_000_000) * inputRate +
+    (outputTokens / 1_000_000) * GEMINI_25_FLASH_RATES.outputPerMillion;
 
-  try {
-    const res = await fetch(`${BASE_URL}/models?key=${apiKey}`);
-    if (!res.ok) {
-        // If the key is invalid, we might get 400/403. We can't validate model, so strictly return preferred.
-        console.warn(`Model validation fetch failed: ${res.status}`);
-        return preferredModel; 
-    }
+  return { inputTokens, outputTokens, tokens, cost };
+}
 
-    const data = await res.json();
-    const models = data.models || [];
-    
-    const normalize = (id: string) => id.replace(/^models\//, '');
-    const preferredNorm = normalize(preferredModel);
-    
-    // 1. Check if preferred exists
-    const exactMatch = models.find((m: any) => normalize(m.name) === preferredNorm);
-    if (exactMatch) return preferredNorm;
-
-    console.log(`Preferred model '${preferredModel}' not found. Looking for fallback...`);
-
-    // 2. Fallback: Look for a 'flash' model that supports generation
-    const flashFallback = models.find((m: any) => 
-        m.supportedGenerationMethods?.includes('generateContent') && 
-        m.name.includes('flash')
-    );
-    if (flashFallback) return normalize(flashFallback.name);
-
-    // 3. Fallback: Any model supporting content generation
-    const anyFallback = models.find((m: any) => 
-        m.supportedGenerationMethods?.includes('generateContent')
-    );
-    if (anyFallback) return normalize(anyFallback.name);
-
-    // 4. No suitable model found in list (rare)
-    throw new Error("No valid generative models found for this API key.");
-
-  } catch (error) {
-    console.error("Model validation error:", error);
-    // On network error or other issues, assume preferred is correct to allow retry
-    return preferredModel; 
-  }
-};
-
-/**
- * Transcribes audio from a Blob or File.
- * Supports both recorded audio (Blob) and uploaded files (File).
- * The file is automatically cleaned up from memory after transcription.
- */
-export const transcribeAudio = async (
-  audioBlob: Blob, 
-  apiKey: string,
-  modelId: string
-): Promise<{ text: string, usage: { tokens: number, cost: number } }> => {
-  if (!apiKey) throw new Error("API Key is missing");
-
-  const base64Data = await new Promise<string>((resolve) => {
+async function readBlobAsBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve(base64);
+      resolve(result.split(',')[1]);
     };
-    reader.readAsDataURL(audioBlob);
+    reader.readAsDataURL(blob);
   });
+}
 
-  const url = buildGenerateUrl(modelId, apiKey);
-  console.log(`Transcribing with model: ${modelId} -> ${url.replace(apiKey, 'HIDDEN')}`);
+async function generateText(
+  text: string,
+  apiKey: string,
+  modelId: string
+): Promise<{ text: string; usage: UsageResult }> {
+  if (!apiKey) throw new Error('API Key is missing');
 
-  const payload = {
-    contents: [{
-      parts: [
-        {
-          inline_data: {
-            mime_type: audioBlob.type || 'audio/webm',
-            data: base64Data
-          }
-        },
-        {
-          text: "Transcribe this audio. Return ONLY the transcript. Do not add intro/outro text. If the audio is silent or unintelligible, return '[Unintelligible Audio]'."
-        }
-      ]
-    }]
-  };
-
-  const response = await fetch(url, {
+  const response = await fetch(buildGenerateUrl(modelId, apiKey), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      contents: [{ parts: [{ text }] }],
+    }),
   });
 
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
-    const msg = errData.error?.message || response.statusText;
-    if (response.status === 404) {
-        throw new Error(`Model '${modelId}' not found (404). Check Settings > Model ID.`);
-    }
-    throw new Error(`Gemini API Error: ${msg}`);
+    const message = errData.error?.message || response.statusText;
+    throw new Error(`Gemini API Error: ${message}`);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const usageMeta = data.usageMetadata || {};
-  const totalTokens = usageMeta.totalTokenCount || (1000 + text.length / 4);
-  const cost = (totalTokens / 1000000) * COST_PER_1M_TOKENS;
+  const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return {
+    text: resultText,
+    usage: estimateUsage(data.usageMetadata, resultText, text.length, 'text'),
+  };
+}
 
-  return { text, usage: { tokens: Math.floor(totalTokens), cost } };
+async function generateFromAudio(
+  audioBlob: Blob,
+  prompt: string,
+  apiKey: string,
+  modelId: string
+): Promise<{ text: string; usage: UsageResult }> {
+  if (!apiKey) throw new Error('API Key is missing');
+
+  const base64Data = await readBlobAsBase64(audioBlob);
+
+  const response = await fetch(buildGenerateUrl(modelId, apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              inline_data: {
+                mime_type: audioBlob.type || 'audio/webm',
+                data: base64Data,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    const message = errData.error?.message || response.statusText;
+    throw new Error(`Gemini API Error: ${message}`);
+  }
+
+  const data = await response.json();
+  const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return {
+    text: resultText,
+    usage: estimateUsage(data.usageMetadata, resultText, prompt.length, 'audio'),
+  };
+}
+
+export const transcribeAudio = async (
+  audioBlob: Blob,
+  apiKey: string,
+  modelId: string
+): Promise<{ text: string; usage: UsageResult }> => {
+  return generateFromAudio(
+    audioBlob,
+    "Transcribe this audio. Return ONLY the transcript. Do not add intro/outro text. If the audio is silent or unintelligible, return '[Unintelligible Audio]'.",
+    apiKey,
+    modelId
+  );
 };
 
 export const transformText = async (
-  text: string, 
-  mode: PromptMode, 
-  customInstruction: string, 
+  text: string,
+  instructions: string,
   apiKey: string,
   modelId: string
-): Promise<{ text: string, usage: { tokens: number, cost: number } }> => {
-  if (!apiKey) throw new Error("API Key is missing");
-
-  let systemPrompt = "";
-  switch (mode) {
-    case PromptMode.ENHANCER:
-      systemPrompt = "You are an expert prompt engineer. Clean up the following text, fix grammar, remove filler words, and structure it into a clear, concise paragraph or set of paragraphs. Preserve the original intent perfectly.";
-      break;
-    case PromptMode.DEEP:
-      systemPrompt = "You are a senior technical program manager. Convert the following unstructured thoughts into a comprehensive Structured Prompt. Use the following headers strictly: ## Context, ## Goals, ## Constraints, ## Requirements, ## Assumptions, ## Open Questions, ## Next Steps. Use bullet points.";
-      break;
-    case PromptMode.NOTES:
-      systemPrompt = "Convert the following text into extremely concise, high-density bullet points. Capture only the key facts and action items.";
-      break;
-    case PromptMode.CUSTOM:
-      systemPrompt = customInstruction || "Put literally whatever you want here.";
-      break;
-  }
-
-  const url = buildGenerateUrl(modelId, apiKey);
-  console.log(`Promptifying with model: ${modelId} -> ${url.replace(apiKey, 'HIDDEN')}`);
-
-  const payload = {
-    contents: [{
-      parts: [
-        { text: `Task: ${systemPrompt}\n\nInput Text:\n${text}` }
-      ]
-    }]
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    const msg = errData.error?.message || response.statusText;
-    if (response.status === 404) {
-        throw new Error(`Model '${modelId}' not found (404). Check Settings > Model ID.`);
-    }
-    throw new Error(`Gemini API Error: ${msg}`);
-  }
-
-  const data = await response.json();
-  const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const usageMeta = data.usageMetadata || {};
-  const totalTokens = usageMeta.totalTokenCount || (text.length + resultText.length)/4;
-  const cost = (totalTokens / 1000000) * COST_PER_1M_TOKENS;
-
-  return { text: resultText, usage: { tokens: Math.floor(totalTokens), cost } };
+): Promise<{ text: string; usage: UsageResult }> => {
+  return generateText(`Task: ${instructions}\n\nInput Text:\n${text}`, apiKey, modelId);
 };
+
+export const translateText = async (
+  text: string,
+  settings: TranslateSettings,
+  apiKey: string,
+  modelId: string
+): Promise<{ text: string; usage: UsageResult }> => {
+  const transliterationInstruction = settings.transliterationEnabled
+    ? `Include a "## Transliteration" section. Format: ${
+        settings.transliterationFormat === 'Custom'
+          ? settings.customTransliterationFormat || 'Custom user-readable transliteration'
+          : settings.transliterationFormat
+      }.`
+    : 'Do not include transliteration.';
+
+  const prompt = [
+    `Translate from ${settings.sourceLanguage} to ${settings.targetLanguage}.`,
+    transliterationInstruction,
+    'Return markdown with exactly these sections when applicable: ## Original Text, ## Translation, ## Transliteration.',
+    `Input Text:\n${text}`,
+  ].join('\n\n');
+
+  return generateText(prompt, apiKey, modelId);
+};
+
+export const processUpload = async (
+  audioBlob: Blob,
+  processingType: UploadProcessingType,
+  apiKey: string,
+  modelId: string
+): Promise<{ text: string; usage: UsageResult }> => {
+  const prompt = getUploadPrompt(processingType);
+  return generateFromAudio(audioBlob, prompt, apiKey, modelId);
+};
+
+function getUploadPrompt(processingType: UploadProcessingType): string {
+  switch (processingType) {
+    case 'raw-transcription':
+      return 'Transcribe this uploaded audio. Return ONLY the transcript. Do not add intro/outro text.';
+    case 'speaker-transcript':
+      return 'Transcribe this audio with speaker separation where possible. Use labels like Speaker A, Speaker B, Speaker C. Return clean markdown.';
+    case 'meeting-summary':
+      return 'Analyze this media audio. Return a concise structured media summary with sections for Summary, Key Points, Notable Details, Risks, and Follow-ups.';
+    case 'action-items':
+      return 'Analyze this audio. Extract actionable tasks only. Return markdown with task, owner if mentioned, due date if mentioned, and context.';
+    default:
+      return 'Transcribe this uploaded audio. Return clean markdown.';
+  }
+}

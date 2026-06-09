@@ -1,18 +1,27 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, File, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, File, AlertCircle, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
+import { Modal } from './Modal';
 
 interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFileSelect: (file: File) => void;
+  actionLabel?: string;
+  currentFileName?: string;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
 const SUPPORTED_FORMATS = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac', 'audio/webm'];
 const SUPPORTED_EXTENSIONS = ['.wav', '.mp3', '.aiff', '.aac', '.ogg', '.flac', '.webm'];
 
-export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFileSelect }) => {
+export const FileUploadModal: React.FC<FileUploadModalProps> = ({
+  isOpen,
+  onClose,
+  onFileSelect,
+  actionLabel = 'Upload & Transcribe',
+  currentFileName,
+}) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,18 +102,46 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
-          <h2 className="text-lg font-semibold dark:text-white">Upload Audio File</h2>
-          <button onClick={handleClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Upload Audio File"
+      maxWidth="lg"
+      footer={
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={!selectedFile}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {actionLabel}
           </button>
         </div>
+      }
+    >
+        <div className="space-y-4">
+          {currentFileName && !selectedFile && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle size={20} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Currently loaded file
+                  </p>
+                  <p className="text-xs text-green-800 dark:text-green-200 truncate mt-1">
+                    {currentFileName}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
           {/* Info Panel */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex gap-3">
@@ -193,25 +230,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClos
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3 justify-end">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={!selectedFile}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Upload & Transcribe
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

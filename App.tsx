@@ -1,18 +1,63 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Copy, Trash2, Download, Square, PenTool, Sparkles, Mic, ChevronLeft, ChevronRight, Loader2, PanelLeftOpen, PanelRightOpen, Clock, Menu, Upload } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  Clock,
+  Copy,
+  Download,
+  Languages,
+  Loader2,
+  Mic,
+  PanelLeftOpen,
+  PanelRightOpen,
+  PenTool,
+  Settings,
+  Sparkles,
+  Square,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import clsx from 'clsx';
 
-import { AppState, ViewMode, PromptMode, SettingsData, ApiUsage, HistoryItem } from './types';
-import { transcribeAudio, transformText, validateAndGetModel } from './services/geminiService';
+import {
+  AnalyticsRecord,
+  AppMode,
+  AppPrefs,
+  AppState,
+  CustomModeData,
+  HistoryItem,
+  PromptMode,
+  PromptModeDefinition,
+  UsageResult,
+  ViewMode,
+} from './types';
+import {
+  processUpload,
+  transcribeAudio,
+  transformText,
+  translateText,
+} from './services/geminiService';
+import { STORAGE_KEYS } from './lib/storage';
+import { useLocalStorageState } from './hooks/useLocalStorageState';
+import { useSettings } from './hooks/useSettings';
+import { useCustomModes } from './hooks/useCustomModes';
+import { useHistory } from './hooks/useHistory';
+import { useAnalytics } from './hooks/useAnalytics';
+import { buildPromptModes, getPromptModeFallback } from './prompts';
+import { getAppModeLabel, getUploadProcessingLabel } from './utils/labels';
 import { Waveform } from './components/Waveform';
 import { PromptifyPanel } from './components/PromptifyPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { FileUploadModal } from './components/FileUploadModal';
 import { InfoModal } from './components/InfoModal';
+import { ModeSwitcher } from './components/ModeSwitcher';
+import { CustomModeModal } from './components/CustomModeModal';
+import { PromptModeInfoModal } from './components/PromptModeInfoModal';
+import { TranslatePanel } from './components/TranslatePanel';
+import { UploadPanel } from './components/UploadPanel';
+import { HistoryPreviewModal } from './components/HistoryPreviewModal';
+import { AnalyticsModal } from './components/AnalyticsModal';
 
-// Error Boundary Component for Markdown Rendering
 class MarkdownErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback: string },
   { hasError: boolean }
@@ -32,174 +77,125 @@ class MarkdownErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="whitespace-pre-wrap font-mono text-sm">
-          {this.props.fallback}
-        </div>
-      );
+      return <div className="whitespace-pre-wrap font-mono text-sm">{this.props.fallback}</div>;
     }
 
     return this.props.children;
   }
 }
 
-const DEFAULT_SETTINGS: SettingsData = {
-  theme: 'light',
-  liveTranscription: false,
-  apiKey: '',
-  microphoneId: '',
-  saveApiKey: false,
-  modelId: 'gemini-2.5-flash' // Default to Gemini 2.5 Flash (Stable)
+const DEFAULT_PREFS: AppPrefs = {
+  activeMode: AppMode.SPEECH,
+  promptMode: PromptMode.ENHANCER,
+  translate: {
+    sourceLanguage: 'Auto Detect',
+    targetLanguage: 'English',
+    transliterationEnabled: false,
+    transliterationFormat: 'Roman Letters',
+    customTransliterationFormat: '',
+  },
+  upload: {
+    processingType: 'raw-transcription',
+  },
+  showLeftPanel: true,
+  showRightPanel: true,
 };
 
+function normalizePrefs(prefs: AppPrefs): AppPrefs {
+  return {
+    ...DEFAULT_PREFS,
+    ...prefs,
+    translate: { ...DEFAULT_PREFS.translate, ...prefs.translate },
+    upload: { ...DEFAULT_PREFS.upload, ...prefs.upload },
+  };
+}
+
 function App() {
-  // --- State ---
+  const { settings, setSettings } = useSettings();
+  const { customModes, updateCustomMode, resetCustomMode } = useCustomModes();
+  const { history, addHistoryItem, deleteHistoryItem, clearHistory } = useHistory();
+  const { analytics, usage, addAnalyticsRecord, clearAnalytics } = useAnalytics();
+  const [storedPrefs, setStoredPrefs] = useLocalStorageState<AppPrefs>(STORAGE_KEYS.prefs, DEFAULT_PREFS);
+  const prefs = normalizePrefs(storedPrefs);
+
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.RAW);
-
-  const [rawTranscript, setRawTranscript] = useState<string>('');
-  const [transformedTranscript, setTransformedTranscript] = useState<string>('');
-
+  const [rawTranscript, setRawTranscript] = useState('');
+  const [transformedTranscript, setTransformedTranscript] = useState('');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
-  const [settings, setSettings] = useState<SettingsData>(DEFAULT_SETTINGS);
+  const [error, setError] = useState<string | null>(null);
+  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
+  const [mobileRightOpen, setMobileRightOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [usage, setUsage] = useState<ApiUsage>({ calls: 0, tokens: 0, cost: 0 });
-  const [error, setError] = useState<string | null>(null);
-
-  // Layout State (Desktop)
-  const [showLeftPanel, setShowLeftPanel] = useState(true);
-  const [showRightPanel, setShowRightPanel] = useState(true);
-
-  // Layout State (Mobile/Tablet)
-  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
-  const [mobileRightOpen, setMobileRightOpen] = useState(false);
-
-  // Promptify State
-  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.ENHANCER);
-  const [customInstruction, setCustomInstruction] = useState('');
-
-  // History State
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+  const [editingCustomMode, setEditingCustomMode] = useState<CustomModeData | null>(null);
+  const [infoPromptMode, setInfoPromptMode] = useState<PromptModeDefinition | null>(null);
+  const [previewHistoryItem, setPreviewHistoryItem] = useState<HistoryItem | null>(null);
 
-  // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  // Debug logging for mobile (runs once on mount)
-  useEffect(() => {
-    console.log('🎯 Yappify AI loaded successfully');
-    console.log('📱 User Agent:', navigator.userAgent);
-    console.log('🌐 Window size:', window.innerWidth, 'x', window.innerHeight);
-    console.log('🔗 Current URL:', window.location.href);
-    console.log('🌍 Hostname:', window.location.hostname);
+  const promptModes = useMemo(() => buildPromptModes(customModes), [customModes]);
+  const currentPromptMode =
+    promptModes.find((mode) => mode.id === prefs.promptMode) ?? promptModes[0];
 
-    // Detect if running on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      console.log('📱 Mobile device detected');
-      console.log('💡 To access from desktop, use:', window.location.href);
-    } else {
-      console.log('💻 Desktop device detected');
-      // Try to detect local network IP (this won't work in browser, but helpful for dev)
-      console.log('💡 To access from mobile, ensure you use the Network URL from terminal');
-    }
-  }, []);
-
-  // --- Effects ---
-
-  // Load Settings
-  useEffect(() => {
-    const stored = localStorage.getItem('yappify_settings');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const apiKey = parsed.saveApiKey ? parsed.apiKey : '';
-        const modelId = parsed.modelId || 'gemini-2.5-flash';
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed, apiKey, modelId });
-      } catch (e) {
-        console.error("Failed to parse settings");
-      }
-    }
-  }, []);
-
-  // Save Settings
-  useEffect(() => {
-    const toSave = { ...settings };
-    if (!settings.saveApiKey) {
-      toSave.apiKey = '';
-    }
-    localStorage.setItem('yappify_settings', JSON.stringify(toSave));
-
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('bg-black');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('bg-black');
-    }
-  }, [settings]);
-
-  // Model Validation
-  useEffect(() => {
-    const validate = async () => {
-      if (!settings.apiKey || settings.apiKey.length < 30) return;
-
-      try {
-        const validModel = await validateAndGetModel(settings.apiKey, settings.modelId);
-        if (validModel !== settings.modelId) {
-          console.log(`Switched model from ${settings.modelId} to ${validModel}`);
-          setSettings(prev => ({ ...prev, modelId: validModel }));
-          setError(`Note: Model '${settings.modelId}' unavailable. Switched to '${validModel}'.`);
-          setTimeout(() => setError(null), 5000);
-        }
-      } catch (e) {
-        console.error("Model validation error", e);
-      }
-    };
-
-    // Debounce validation to only run after user stops typing
-    const timeoutId = setTimeout(() => {
-      if (settings.apiKey.length > 30) {
-        validate();
-      }
-    }, 1000); // Wait 1 second after last keystroke
-
-    return () => clearTimeout(timeoutId);
-  }, [settings.apiKey, settings.modelId]);
-
-  // --- Helpers ---
-
+  const isProcessing =
+    appState === AppState.TRANSCRIBING ||
+    appState === AppState.PROMPTIFYING ||
+    appState === AppState.TRANSLATING ||
+    appState === AppState.PROCESSING_UPLOAD;
   const currentDisplay = viewMode === ViewMode.RAW ? rawTranscript : transformedTranscript;
-  const isProcessing = appState === AppState.TRANSCRIBING || appState === AppState.PROMPTIFYING;
+  const hasWorkspaceContent = Boolean(rawTranscript || transformedTranscript || audioBlob || uploadedFile);
+  const centerColSpan =
+    12 - (prefs.showLeftPanel ? 3 : 0) - (prefs.showRightPanel ? 3 : 0);
+  const centerColClass = {
+    6: 'lg:col-span-6',
+    9: 'lg:col-span-9',
+    12: 'lg:col-span-12',
+  }[centerColSpan] ?? 'lg:col-span-6';
 
-  // Sanitize text for safe display (remove potential problematic characters)
+  const updatePrefs = (patch: Partial<AppPrefs>) => {
+    setStoredPrefs((prev) => normalizePrefs({ ...normalizePrefs(prev), ...patch }));
+  };
+
   const sanitizeText = (text: string): string => {
     if (!text) return '';
-    // Limit length to prevent memory issues
     const maxLength = 50000;
     if (text.length > maxLength) {
-      return text.substring(0, maxLength) + '\n\n... (truncated for display)';
+      return `${text.substring(0, maxLength)}\n\n... (truncated for display)`;
     }
     return text;
   };
 
-  // Calculate Center Panel Col Span
-  // Total 12 cols. Left/Right take 3 each if open.
-  // Both open: 6. One open: 9. None open: 12.
-  const centerColSpan = 12 - (showLeftPanel ? 3 : 0) - (showRightPanel ? 3 : 0);
+  const trackUsage = (result: UsageResult, action: string, appMode: AppMode) => {
+    const record: AnalyticsRecord = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      appMode,
+      action,
+      modelId: settings.modelId,
+      ...result,
+    };
+    addAnalyticsRecord(record);
+  };
 
-  // --- Handlers (Existing logic unchanged) ---
+  const requireApiKey = () => {
+    if (settings.apiKey) return true;
+    setIsSettingsOpen(true);
+    setError('API Key required.');
+    return false;
+  };
+
   const handleStartRecording = async () => {
     setError(null);
     try {
       const constraints: MediaStreamConstraints = {
-        audio: settings.microphoneId ? { deviceId: settings.microphoneId } : true
+        audio: settings.microphoneId ? { deviceId: settings.microphoneId } : true,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setAudioStream(stream);
@@ -212,15 +208,16 @@ function App() {
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         setAudioBlob(blob);
+        setUploadedFile(null);
         setAppState(AppState.RECORDED);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
         setAudioStream(null);
       };
       mediaRecorder.start();
       setAppState(AppState.RECORDING);
     } catch (err) {
       console.error(err);
-      setError("Could not access microphone.");
+      setError('Could not access microphone.');
     }
   };
 
@@ -238,74 +235,169 @@ function App() {
     }
   };
 
-  const handleTranscribe = async () => {
+  const handleTranscribe = async (): Promise<string | null> => {
     const sourceBlob = uploadedFile || audioBlob;
-    if (!sourceBlob) return;
-    if (!settings.apiKey) {
-      setIsSettingsOpen(true);
-      setError("API Key required.");
-      return;
+    if (!sourceBlob) {
+      setError('Record or upload audio first.');
+      return null;
     }
+    if (!requireApiKey()) return null;
+
     setAppState(AppState.TRANSCRIBING);
     setError(null);
     setTransformedTranscript('');
     try {
       const result = await transcribeAudio(sourceBlob, settings.apiKey, settings.modelId);
       setRawTranscript(result.text);
-      updateUsage(result.usage);
       setAppState(AppState.READY);
       setViewMode(ViewMode.RAW);
-      // Clear uploaded file after transcription
-      if (uploadedFile) {
-        setUploadedFile(null);
-      }
+      trackUsage(result.usage, 'Transcription', prefs.activeMode);
+      if (uploadedFile) setUploadedFile(null);
+      return result.text;
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Transcription failed.");
-      setAppState(uploadedFile ? AppState.IDLE : AppState.RECORDED);
+      setError(err.message || 'Transcription failed.');
+      setAppState(sourceBlob ? AppState.RECORDED : AppState.IDLE);
+      return null;
     }
+  };
+
+  const handlePromptModeChange = (mode: PromptMode) => {
+    updatePrefs({ promptMode: mode });
   };
 
   const handlePromptify = async () => {
     if (!rawTranscript) return;
-    if (!settings.apiKey) {
-      setIsSettingsOpen(true);
-      return;
-    }
+    if (!requireApiKey()) return;
+
     setAppState(AppState.PROMPTIFYING);
     setError(null);
     try {
-      const result = await transformText(rawTranscript, promptMode, customInstruction, settings.apiKey, settings.modelId);
+      const instructions = getPromptModeFallback(currentPromptMode);
+      const result = await transformText(rawTranscript, instructions, settings.apiKey, settings.modelId);
       setTransformedTranscript(result.text);
-      updateUsage(result.usage);
       setAppState(AppState.DONE);
       setViewMode(ViewMode.TRANSFORMED);
+      trackUsage(result.usage, currentPromptMode.title, AppMode.SPEECH);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Transformation failed.");
+      setError(err.message || 'Transformation failed.');
       setAppState(AppState.READY);
     }
   };
 
-  const updateUsage = (newUsage: { tokens: number, cost: number }) => {
-    setUsage(prev => ({
-      calls: prev.calls + 1,
-      tokens: prev.tokens + newUsage.tokens,
-      cost: prev.cost + newUsage.cost
-    }));
+  const handleTranslate = async () => {
+    if (!requireApiKey()) return;
+
+    let input = rawTranscript;
+    if (!input) {
+      const transcript = await handleTranscribe();
+      if (!transcript) return;
+      input = transcript;
+    }
+
+    setAppState(AppState.TRANSLATING);
+    setError(null);
+    try {
+      const result = await translateText(input, prefs.translate, settings.apiKey, settings.modelId);
+      setTransformedTranscript(result.text);
+      setAppState(AppState.DONE);
+      setViewMode(ViewMode.TRANSFORMED);
+      trackUsage(result.usage, 'Translation', AppMode.TRANSLATE);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Translation failed.');
+      setAppState(AppState.READY);
+    }
+  };
+
+  const handleProcessUpload = async () => {
+    const sourceBlob = uploadedFile || audioBlob;
+    if (!sourceBlob) {
+      setIsFileUploadOpen(true);
+      return;
+    }
+    if (!requireApiKey()) return;
+
+    setAppState(AppState.PROCESSING_UPLOAD);
+    setError(null);
+    setTransformedTranscript('');
+    try {
+      const label = getUploadProcessingLabel(prefs.upload.processingType);
+
+      if (
+        prefs.upload.processingType === 'meeting-summary' ||
+        prefs.upload.processingType === 'action-items'
+      ) {
+        const transcript = await transcribeAudio(sourceBlob, settings.apiKey, settings.modelId);
+        setRawTranscript(transcript.text);
+        trackUsage(transcript.usage, 'Upload Transcription', AppMode.UPLOAD);
+
+        const result = await transformText(
+          transcript.text,
+          getUploadTransformInstructions(prefs.upload.processingType),
+          settings.apiKey,
+          settings.modelId
+        );
+        setTransformedTranscript(result.text);
+        setViewMode(ViewMode.TRANSFORMED);
+        setAppState(AppState.DONE);
+        trackUsage(result.usage, label, AppMode.UPLOAD);
+      } else {
+        const result = await processUpload(sourceBlob, prefs.upload.processingType, settings.apiKey, settings.modelId);
+        setRawTranscript(result.text);
+        setViewMode(ViewMode.RAW);
+        setAppState(AppState.READY);
+        trackUsage(result.usage, label, AppMode.UPLOAD);
+      }
+
+      if (uploadedFile) setUploadedFile(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Upload processing failed.');
+      setAppState(AppState.RECORDED);
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    setUploadedFile(file);
+    setAudioBlob(null);
+    setAppState(AppState.RECORDED);
+  };
+
+  const getUploadTransformInstructions = (type: AppPrefs['upload']['processingType']) => {
+    if (type === 'meeting-summary') {
+      return 'Create a structured media summary from this transcript. Include Summary, Key Points, Notable Details, Risks, and Follow-ups.';
+    }
+    if (type === 'action-items') {
+      return 'Extract actionable meeting tasks from this transcript. Include task, owner if mentioned, due date if mentioned, and relevant context.';
+    }
+    return 'Clean up this transcript while preserving meaning.';
+  };
+
+  const getCurrentModeLabel = () => {
+    if (prefs.activeMode === AppMode.SPEECH) {
+      return transformedTranscript ? currentPromptMode.title : getAppModeLabel(AppMode.SPEECH);
+    }
+    if (prefs.activeMode === AppMode.UPLOAD) {
+      return getUploadProcessingLabel(prefs.upload.processingType);
+    }
+    return getAppModeLabel(prefs.activeMode);
   };
 
   const handleClear = (save: boolean) => {
-    if (save && rawTranscript) {
-      const newItem: HistoryItem = {
+    if (save && (rawTranscript || transformedTranscript)) {
+      addHistoryItem({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
+        appMode: prefs.activeMode,
+        modeLabel: getCurrentModeLabel(),
         raw: rawTranscript,
         transformed: transformedTranscript || undefined,
-        mode: transformedTranscript ? promptMode : undefined
-      };
-      setHistory(prev => [...prev, newItem]);
+        promptMode: prefs.activeMode === AppMode.SPEECH ? prefs.promptMode : undefined,
+      });
     }
+
     setRawTranscript('');
     setTransformedTranscript('');
     setAudioBlob(null);
@@ -315,28 +407,16 @@ function App() {
     setIsConfirmClearOpen(false);
   };
 
-  const handleFileSelect = (file: File) => {
-    setUploadedFile(file);
-    setAudioBlob(null); // Clear any recorded audio
-    setAppState(AppState.RECORDED); // Set to recorded state so transcribe button is enabled
-  };
-
   const handleRestoreHistory = (item: HistoryItem) => {
     setRawTranscript(item.raw);
     setTransformedTranscript(item.transformed || '');
     setViewMode(item.transformed ? ViewMode.TRANSFORMED : ViewMode.RAW);
     setAppState(item.transformed ? AppState.DONE : AppState.READY);
-    if (item.mode) setPromptMode(item.mode);
-    // Close mobile panel on restore
+    updatePrefs({
+      activeMode: item.appMode,
+      promptMode: item.promptMode || prefs.promptMode,
+    });
     setMobileRightOpen(false);
-  };
-
-  const handleDeleteHistory = (id: string) => {
-    setHistory(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleClearAllHistory = () => {
-    setHistory([]);
   };
 
   const handleCopy = () => {
@@ -348,139 +428,249 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `yappify-${viewMode.toLowerCase()}-${new Date().getTime()}.md`;
+    a.download = `yappify-${viewMode.toLowerCase()}-${Date.now()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   };
 
-  return (
-    <div className="h-screen w-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 flex flex-col font-sans overflow-hidden">
+  const openCustomMode = (mode: PromptModeDefinition) => {
+    const customMode = customModes.find((item) => item.id === mode.id);
+    if (customMode) setEditingCustomMode(customMode);
+  };
 
+  const leftPanel = (
+    <>
+      {prefs.activeMode === AppMode.SPEECH && (
+        <PromptifyPanel
+          currentMode={prefs.promptMode}
+          onModeChange={handlePromptModeChange}
+          modes={promptModes}
+          disabled={isProcessing}
+          onClose={() => {
+            if (mobileLeftOpen) setMobileLeftOpen(false);
+            else updatePrefs({ showLeftPanel: false });
+          }}
+          onInfoOpen={() => {
+            setIsInfoOpen(true);
+            setMobileLeftOpen(false);
+          }}
+          onModeInfo={(mode) => setInfoPromptMode(mode)}
+          onEditCustomMode={openCustomMode}
+          onResetCustomMode={(mode) => resetCustomMode(mode.id as CustomModeData['id'])}
+        />
+      )}
+
+      {prefs.activeMode === AppMode.TRANSLATE && (
+        <TranslatePanel
+          settings={prefs.translate}
+          onChange={(translate) => updatePrefs({ translate })}
+          disabled={isProcessing}
+          onClose={() => {
+            if (mobileLeftOpen) setMobileLeftOpen(false);
+            else updatePrefs({ showLeftPanel: false });
+          }}
+        />
+      )}
+
+      {prefs.activeMode === AppMode.UPLOAD && (
+        <UploadPanel
+          settings={prefs.upload}
+          onChange={(upload) => updatePrefs({ upload })}
+          onUploadFile={() => {
+            setIsFileUploadOpen(true);
+            setMobileLeftOpen(false);
+          }}
+          onRemoveFile={() => {
+            setUploadedFile(null);
+            if (!audioBlob) setAppState(AppState.IDLE);
+          }}
+          selectedFileName={uploadedFile?.name}
+          disabled={isProcessing}
+          onClose={() => {
+            if (mobileLeftOpen) setMobileLeftOpen(false);
+            else updatePrefs({ showLeftPanel: false });
+          }}
+        />
+      )}
+    </>
+  );
+
+  const rightAction = {
+    [AppMode.SPEECH]: {
+      title: 'Promptify',
+      icon: Sparkles,
+      loading: appState === AppState.PROMPTIFYING,
+      disabled: !rawTranscript || isProcessing,
+      onClick: handlePromptify,
+    },
+    [AppMode.TRANSLATE]: {
+      title: 'Translate',
+      icon: Languages,
+      loading: appState === AppState.TRANSLATING,
+      disabled: (!rawTranscript && !audioBlob && !uploadedFile) || isProcessing,
+      onClick: handleTranslate,
+    },
+    [AppMode.UPLOAD]: {
+      title: 'Process Upload',
+      icon: Sparkles,
+      loading: appState === AppState.PROCESSING_UPLOAD,
+      disabled: (!audioBlob && !uploadedFile) || isProcessing,
+      onClick: handleProcessUpload,
+    },
+  }[prefs.activeMode];
+  const RightIcon = rightAction.icon;
+
+  const statusText =
+    appState === AppState.RECORDING
+      ? 'Recording audio...'
+      : appState === AppState.TRANSCRIBING
+        ? 'Transcribing...'
+        : appState === AppState.PROMPTIFYING
+          ? 'Applying prompt magic...'
+          : appState === AppState.TRANSLATING
+            ? 'Translating...'
+            : appState === AppState.PROCESSING_UPLOAD
+              ? 'Processing upload...'
+              : error
+                ? ''
+                : uploadedFile
+                  ? 'File Ready'
+                  : appState !== AppState.IDLE
+                    ? 'Ready'
+                    : '';
+
+  return (
+    <div className="h-screen min-h-[100dvh] max-h-[100dvh] w-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 flex flex-col font-sans overflow-hidden overscroll-none">
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={setSettings}
         usage={usage}
+        onOpenAnalytics={() => {
+          setIsSettingsOpen(false);
+          setIsAnalyticsOpen(true);
+        }}
       />
 
       <FileUploadModal
         isOpen={isFileUploadOpen}
         onClose={() => setIsFileUploadOpen(false)}
         onFileSelect={handleFileSelect}
+        actionLabel={prefs.activeMode === AppMode.UPLOAD ? 'Use File' : 'Upload & Transcribe'}
+        currentFileName={uploadedFile?.name}
       />
 
-      <InfoModal
-        isOpen={isInfoOpen}
-        onClose={() => setIsInfoOpen(false)}
+      <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+
+      <CustomModeModal
+        isOpen={Boolean(editingCustomMode)}
+        mode={editingCustomMode}
+        onClose={() => setEditingCustomMode(null)}
+        onSave={updateCustomMode}
       />
 
-      {/* --- Mobile Drawers (Overlays) --- */}
+      <PromptModeInfoModal
+        isOpen={Boolean(infoPromptMode)}
+        mode={infoPromptMode}
+        onClose={() => setInfoPromptMode(null)}
+      />
 
-      {/* Mobile Left Drawer (Promptify) */}
+      <HistoryPreviewModal
+        isOpen={Boolean(previewHistoryItem)}
+        item={previewHistoryItem}
+        onClose={() => setPreviewHistoryItem(null)}
+        onRestore={handleRestoreHistory}
+      />
+
+      <AnalyticsModal
+        isOpen={isAnalyticsOpen}
+        onClose={() => setIsAnalyticsOpen(false)}
+        records={analytics}
+        usage={usage}
+        onClear={clearAnalytics}
+      />
+
       <div className={clsx("fixed inset-0 z-40 lg:hidden pointer-events-none transition-opacity duration-300", mobileLeftOpen ? "opacity-100" : "opacity-0")}>
-        {/* Backdrop */}
         <div
           className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileLeftOpen ? "block" : "hidden")}
           onClick={() => setMobileLeftOpen(false)}
         />
-        {/* Panel */}
         <div className={clsx(
-          "absolute left-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
+          "absolute left-0 top-0 bottom-0 w-[84%] max-w-xs bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
           mobileLeftOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-          <PromptifyPanel
-            currentMode={promptMode}
-            onModeChange={(m) => { setPromptMode(m); setMobileLeftOpen(false); }}
-            customInstruction={customInstruction}
-            onCustomInstructionChange={setCustomInstruction}
-            disabled={isProcessing}
-            onClose={() => setMobileLeftOpen(false)}
-            onFileUpload={() => { setIsFileUploadOpen(true); setMobileLeftOpen(false); }}
-            onInfoOpen={() => { setIsInfoOpen(true); setMobileLeftOpen(false); }}
-          />
+          {leftPanel}
         </div>
       </div>
 
-      {/* Mobile Right Drawer (History) */}
       <div className={clsx("fixed inset-0 z-40 lg:hidden pointer-events-none transition-opacity duration-300", mobileRightOpen ? "opacity-100" : "opacity-0")}>
-        {/* Backdrop */}
         <div
           className={clsx("absolute inset-0 bg-black/50 pointer-events-auto", mobileRightOpen ? "block" : "hidden")}
           onClick={() => setMobileRightOpen(false)}
         />
-        {/* Panel */}
         <div className={clsx(
-          "absolute right-0 top-0 bottom-0 w-[80%] max-w-xs bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
+          "absolute right-0 top-0 bottom-0 w-[84%] max-w-xs bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 p-6 shadow-2xl transition-transform duration-300 pointer-events-auto",
           mobileRightOpen ? "translate-x-0" : "translate-x-full"
         )}>
           <HistoryPanel
             history={history}
-            onRestore={handleRestoreHistory}
-            onDelete={handleDeleteHistory}
-            onClearAll={handleClearAllHistory}
+            onPreview={(item) => {
+              setPreviewHistoryItem(item);
+              setMobileRightOpen(false);
+            }}
+            onDelete={deleteHistoryItem}
+            onClearAll={clearHistory}
             onClose={() => setMobileRightOpen(false)}
           />
         </div>
       </div>
 
-
-      {/* --- Main Grid Layout --- */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 h-full overflow-hidden">
-
-        {/* Left Panel - Promptify (Desktop Only) */}
-        {showLeftPanel && (
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 h-full overflow-hidden">
+        {prefs.showLeftPanel && (
           <div className="hidden lg:flex lg:col-span-3 border-r border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
-            <PromptifyPanel
-              currentMode={promptMode}
-              onModeChange={setPromptMode}
-              customInstruction={customInstruction}
-              onCustomInstructionChange={setCustomInstruction}
-              disabled={isProcessing}
-              onClose={() => setShowLeftPanel(false)}
-              onFileUpload={() => setIsFileUploadOpen(true)}
-              onInfoOpen={() => setIsInfoOpen(true)}
-            />
+            {leftPanel}
           </div>
         )}
 
-        {/* Center Panel - Main UI */}
-        <div className={`lg:col-span-${centerColSpan} col-span-1 flex flex-col h-full max-h-screen relative transition-all duration-300`}>
-
-          {/* Header */}
-          <header className="flex justify-between items-start p-4 lg:p-6 lg:pb-2 relative">
-
-            {/* Mobile Left Button */}
+        <div className={clsx(centerColClass, 'col-span-1 flex flex-col h-full max-h-[100dvh] relative transition-all duration-300 overflow-hidden')}>
+          <header className="flex-shrink-0 flex justify-between items-start p-4 lg:p-6 lg:pb-2 relative min-h-[64px]">
             <button
               onClick={() => setMobileLeftOpen(true)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
-              title="Promptify Modes"
+              title="Open mode settings"
             >
-              <Sparkles size={20} />
+              {prefs.activeMode === AppMode.TRANSLATE ? (
+                <Languages size={20} />
+              ) : prefs.activeMode === AppMode.UPLOAD ? (
+                <Upload size={20} />
+              ) : (
+                <Sparkles size={20} />
+              )}
             </button>
 
-            {/* Desktop Left Toggle (if closed) */}
-            <div className="hidden lg:flex items-center gap-3">
-              {!showLeftPanel && (
+            <div className="absolute left-6 top-6 hidden lg:flex items-center gap-3">
+              {!prefs.showLeftPanel && (
                 <button
-                  onClick={() => setShowLeftPanel(true)}
+                  onClick={() => updatePrefs({ showLeftPanel: true })}
                   className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
                   title="Open Sidebar"
                 >
                   <PanelLeftOpen size={20} />
                 </button>
               )}
-              <h1 className="text-xl font-bold tracking-tight">yappify-ai 2.0</h1>
             </div>
 
-            {/* Mobile Centered Title */}
-            <h1 className="lg:hidden text-lg font-bold tracking-tight absolute left-1/2 -translate-x-1/2">
-              yappify-ai 2.0
-            </h1>
+            <div className="absolute left-1/2 -translate-x-1/2 top-4 lg:top-6 flex justify-center text-center">
+              <ModeSwitcher
+                mode={prefs.activeMode}
+                onModeChange={(activeMode) => updatePrefs({ activeMode })}
+                disabled={isProcessing}
+              />
+            </div>
 
-            <div className="flex flex-col items-end gap-2">
-              {/* Mobile Right Button */}
+            <div className="ml-auto flex flex-col items-end gap-2">
               <button
                 onClick={() => setMobileRightOpen(true)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
@@ -489,10 +679,9 @@ function App() {
                 <Clock size={20} />
               </button>
 
-              {/* Desktop Right Toggle (if closed) */}
-              {!showRightPanel && (
+              {!prefs.showRightPanel && (
                 <button
-                  onClick={() => setShowRightPanel(true)}
+                  onClick={() => updatePrefs({ showRightPanel: true })}
                   className="hidden lg:block p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500"
                   title="Open History"
                 >
@@ -510,19 +699,17 @@ function App() {
             </div>
           </header>
 
-          {/* Controls */}
           <div className="px-6 py-4 flex flex-col gap-6">
             <div className="flex items-center justify-center gap-6">
-              {/* Transcribe */}
               <button
                 onClick={handleTranscribe}
                 disabled={(!audioBlob && !uploadedFile) || isProcessing}
                 title="Transcribe Audio"
                 className={clsx(
-                  "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
+                  'flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm',
                   appState === AppState.TRANSCRIBING
-                    ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
-                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
+                    ? 'bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400'
+                    : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white'
                 )}
               >
                 {appState === AppState.TRANSCRIBING ? (
@@ -532,14 +719,14 @@ function App() {
                 )}
               </button>
 
-              {/* Talk / Stop */}
               <button
                 onClick={toggleRecording}
+                disabled={isProcessing}
                 className={clsx(
-                  "w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95",
+                  'w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100',
                   appState === AppState.RECORDING
-                    ? "bg-black dark:bg-white text-white dark:text-black"
-                    : "bg-white dark:bg-black border-4 border-gray-100 dark:border-gray-800 text-black dark:text-white hover:border-gray-200 dark:hover:border-gray-700"
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
+                    : 'bg-white dark:bg-black border-4 border-gray-100 dark:border-gray-800 text-black dark:text-white hover:border-gray-200 dark:hover:border-gray-700'
                 )}
               >
                 {appState === AppState.RECORDING ? (
@@ -549,90 +736,83 @@ function App() {
                 )}
               </button>
 
-              {/* Promptify */}
               <button
-                onClick={handlePromptify}
-                disabled={!rawTranscript || isProcessing}
-                title="Promptify (AI Transform)"
+                onClick={rightAction.onClick}
+                disabled={rightAction.disabled}
+                title={rightAction.title}
                 className={clsx(
-                  "flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm",
-                  appState === AppState.PROMPTIFYING
-                    ? "bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400"
-                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white"
+                  'flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm',
+                  rightAction.loading
+                    ? 'bg-gray-100 dark:bg-gray-800 border border-transparent text-gray-400'
+                    : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white',
+                  rightAction.disabled && !rightAction.loading && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                {appState === AppState.PROMPTIFYING ? (
+                {rightAction.loading ? (
                   <Loader2 className="animate-spin" size={24} />
                 ) : (
-                  <Sparkles size={24} />
+                  <RightIcon size={24} />
                 )}
               </button>
             </div>
 
-            {/* Waveform */}
             <div className="w-full max-w-lg mx-auto">
               <div className="flex justify-between items-end mb-2 px-1 h-6">
                 <span className="text-xs font-mono text-purple-600 dark:text-purple-400 animate-pulse">
-                  {appState === AppState.RECORDING ? "Recording audio..." :
-                    appState === AppState.TRANSCRIBING ? "Transcribing..." :
-                      appState === AppState.PROMPTIFYING ? "Applying prompt magic..." :
-                        error ? "" :
-                          uploadedFile ? "File Ready" :
-                            appState !== AppState.IDLE ? "Ready" : ""}
+                  {statusText}
                 </span>
 
                 {transformedTranscript && (
                   <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
                     <button
                       onClick={() => setViewMode(ViewMode.RAW)}
-                      className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.RAW ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
+                      className={clsx('px-3 py-1 text-[10px] font-bold rounded-full transition-colors', viewMode === ViewMode.RAW ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500')}
                     >
                       RAW
                     </button>
                     <button
                       onClick={() => setViewMode(ViewMode.TRANSFORMED)}
-                      className={clsx("px-3 py-1 text-[10px] font-bold rounded-full transition-colors", viewMode === ViewMode.TRANSFORMED ? "bg-white dark:bg-gray-700 shadow-sm" : "text-gray-500")}
+                      className={clsx('px-3 py-1 text-[10px] font-bold rounded-full transition-colors', viewMode === ViewMode.TRANSFORMED ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500')}
                     >
                       AI
                     </button>
                   </div>
                 )}
               </div>
-              <div className="w-full">
-                <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
-              </div>
+              <Waveform active={appState === AppState.RECORDING} stream={audioStream} />
             </div>
-
           </div>
 
-          {/* Output */}
           <div className="flex-1 overflow-hidden px-6 pb-6 flex flex-col min-h-0">
             <div className="flex-1 min-h-0 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 p-6 overflow-y-auto custom-scrollbar shadow-sm">
               {currentDisplay ? (
                 <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
                   <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100">
-                    <ReactMarkdown>
-                      {sanitizeText(currentDisplay)}
-                    </ReactMarkdown>
+                    <ReactMarkdown>{sanitizeText(currentDisplay)}</ReactMarkdown>
                   </div>
                 </MarkdownErrorBoundary>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600 text-center">
                   <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
                     <Mic size={32} className="opacity-40 text-black dark:text-white" />
                   </div>
-                  <p className="text-lg font-bold text-gray-500 dark:text-gray-400">Ready to yapp.</p>
-                  <p className="text-sm mt-2 opacity-70 font-medium">Record, Transcribe, then Promptify.</p>
+                  <p className="text-lg font-bold text-gray-500 dark:text-gray-400">Ready to Yappify.</p>
+                  <p className="text-sm mt-2 opacity-70 font-medium">
+                    {prefs.activeMode === AppMode.SPEECH
+                      ? 'Record, Transcribe, then Promptify.'
+                      : prefs.activeMode === AppMode.TRANSLATE
+                        ? 'Record or transcribe, then translate.'
+                        : 'Upload or record audio, then process.'}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Action Row - Fixed at bottom */}
-            <div className="flex-shrink-0 mt-4 flex justify-between items-center">
+            <div className="flex-shrink-0 mt-4 flex justify-between items-center gap-3">
               {!isConfirmClearOpen ? (
                 <button
                   onClick={() => setIsConfirmClearOpen(true)}
-                  disabled={!rawTranscript && !audioBlob && !uploadedFile}
+                  disabled={!hasWorkspaceContent}
                   className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-red-500 disabled:opacity-20 transition-colors uppercase tracking-wider px-2"
                 >
                   <Trash2 size={14} /> Clear
@@ -665,28 +845,24 @@ function App() {
             </div>
           </div>
 
-          {/* Error Toast */}
           {error && (
             <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-in fade-in slide-in-from-top-2 z-50">
               {error}
             </div>
           )}
-
         </div>
 
-        {/* Right Panel - History (Desktop Only) */}
-        {showRightPanel && (
+        {prefs.showRightPanel && (
           <div className="hidden lg:flex lg:col-span-3 border-l border-gray-100 dark:border-gray-800 p-6 bg-gray-50/50 dark:bg-gray-900/20">
             <HistoryPanel
               history={history}
-              onRestore={handleRestoreHistory}
-              onDelete={handleDeleteHistory}
-              onClearAll={handleClearAllHistory}
-              onClose={() => setShowRightPanel(false)}
+              onPreview={setPreviewHistoryItem}
+              onDelete={deleteHistoryItem}
+              onClearAll={clearHistory}
+              onClose={() => updatePrefs({ showRightPanel: false })}
             />
           </div>
         )}
-
       </div>
     </div>
   );
