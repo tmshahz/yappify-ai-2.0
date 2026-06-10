@@ -51,13 +51,13 @@ export const CustomModeModal: React.FC<CustomModeModalProps> = ({
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="yap-ghost-button px-4 py-2 text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)] hover:bg-gray-100 dark:hover:bg-[var(--yap-glass-hover)] rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="yap-violet-button px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             Save Mode
           </button>
@@ -66,25 +66,25 @@ export const CustomModeModal: React.FC<CustomModeModalProps> = ({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">
             Custom title
           </label>
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Custom Mode"
-            className="w-full text-sm p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+            className="yap-glass-input w-full text-sm p-3 rounded-lg border border-gray-200 dark:border-[var(--yap-glass-border)] bg-gray-50 dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">
             Custom instructions
           </label>
           <textarea
             value={instructions}
             onChange={(event) => setInstructions(event.target.value)}
             placeholder="e.g., Rewrite this as crisp engineering notes with risks and next actions."
-            className="w-full h-44 p-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none resize-none"
+            className="yap-glass-input w-full h-44 p-3 text-sm rounded-lg border border-gray-200 dark:border-[var(--yap-glass-border)] bg-gray-50 dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none resize-none"
           />
           <p className="text-xs text-gray-400">
             These instructions are saved locally in this browser only.

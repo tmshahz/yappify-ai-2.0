@@ -56,66 +56,50 @@ export const Waveform: React.FC<WaveformProps> = ({ active, stream }) => {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    // Buffer to hold waveform history
-    // We'll store amplitude values (0-255)
-    // Width of canvas determines history length
-    const bufferLength = rect.width; 
-    let amplitudeHistory: number[] = new Array(Math.floor(bufferLength)).fill(128);
+    const computedStyle = getComputedStyle(document.documentElement);
+    const isDark = document.documentElement.classList.contains('dark');
+    const tokenViolet = computedStyle.getPropertyValue('--yap-violet').trim() || '#7C5CFC';
+    const strokeColor = isDark ? tokenViolet : '#000000';
+    const bufferLength = Math.max(48, Math.floor(rect.width / 4));
+    let amplitudeHistory: number[] = new Array(bufferLength).fill(0);
+    let smoothedAmplitude = 0;
 
     const draw = () => {
-      // 1. Get new data
-      let currentAmplitude = 128; // Center (silence)
+      let targetAmplitude = 0;
       
       if (active && analyserRef.current && dataArrayRef.current) {
         analyserRef.current.getByteTimeDomainData(dataArrayRef.current);
-        // Calculate an average or peak for this frame to represent volume
-        // TimeDomain data goes from 0 to 255, 128 is silence.
         let sum = 0;
-        for(let i = 0; i < dataArrayRef.current.length; i++) {
-           sum += Math.abs(dataArrayRef.current[i] - 128);
+        for (let i = 0; i < dataArrayRef.current.length; i++) {
+          sum += Math.abs(dataArrayRef.current[i] - 128);
         }
-        // Amplify the visual effect
         const average = sum / dataArrayRef.current.length;
-        currentAmplitude = 128 + (average * 4); // Scale up for visibility
-        // Clamp
-        if (currentAmplitude > 255) currentAmplitude = 255;
-        if (currentAmplitude < 0) currentAmplitude = 0;
+        targetAmplitude = Math.min(1, average / 24);
       }
 
-      // 2. Shift history
-      amplitudeHistory.shift(); // Remove oldest
-      // Push new value twice to speed up scrolling slightly or just once
-      amplitudeHistory.push(active ? currentAmplitude : 128);
+      smoothedAmplitude += (targetAmplitude - smoothedAmplitude) * 0.18;
+      amplitudeHistory.shift();
+      amplitudeHistory.push(active ? smoothedAmplitude : 0);
 
-      // 3. Clear Canvas
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      // 4. Draw Line
-      ctx.lineWidth = 3;
-      // Dark mode check handled by parent passing class or checking computed style? 
-      // We'll use CSS variable or simple detection, but for now specific colors requested:
-      // Light: Black line, Dark: White line.
-      const isDark = document.documentElement.classList.contains('dark');
-      ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+      ctx.lineWidth = active ? 3 : 2;
+      ctx.strokeStyle = strokeColor;
+      ctx.globalAlpha = active ? 0.7 : 0.15;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       ctx.beginPath();
       
       const sliceWidth = rect.width / amplitudeHistory.length;
+      const centerY = rect.height / 2;
+      const maxAmplitude = rect.height * 0.36;
       let x = 0;
 
       for (let i = 0; i < amplitudeHistory.length; i++) {
-        // Map 0-255 to canvas height
-        // 128 is center (rect.height / 2)
-        // Value 0 -> rect.height
-        // Value 255 -> 0
-        const v = amplitudeHistory[i] / 255.0; // 0.0 to 1.0
-        
-        // Invert y so higher values go up
-        const y = (1 - v) * rect.height; 
+        const wave = active ? Math.sin(i * 0.42) : 0;
+        const y = centerY - (amplitudeHistory[i] * maxAmplitude * wave);
 
-        // Apply idle thick line logic visually if needed, but 128 data produces straight line naturally
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
@@ -126,6 +110,7 @@ export const Waveform: React.FC<WaveformProps> = ({ active, stream }) => {
       }
 
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       animationRef.current = requestAnimationFrame(draw);
     };
@@ -140,17 +125,11 @@ export const Waveform: React.FC<WaveformProps> = ({ active, stream }) => {
   }, [active]); // Re-run if active state toggles to reset or continue
 
   return (
-    <div className="w-full h-24 bg-white dark:bg-black rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm relative">
+    <div className="w-full h-16 overflow-hidden relative">
        <canvas 
          ref={canvasRef} 
          className="w-full h-full block"
        />
-       {/* Idle visual helper if needed, though canvas handles it */}
-       {!active && (
-         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-           {/* Purely decorative overlay if we wanted, but the canvas draws the line */}
-         </div>
-       )}
     </div>
   );
 };

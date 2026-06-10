@@ -2,11 +2,13 @@ import React from 'react';
 import { CheckCircle, ClipboardList, FileAudio, ListChecks, PanelLeftClose, Upload, Users, X } from 'lucide-react';
 import clsx from 'clsx';
 import { UploadProcessingType, UploadSettings } from '../types';
+import { PanelFooterLinks } from './PanelFooterLinks';
 
 interface UploadPanelProps {
   settings: UploadSettings;
   onChange: (settings: UploadSettings) => void;
   onClose: () => void;
+  onInfoOpen: () => void;
   onUploadFile: () => void;
   onRemoveFile: () => void;
   selectedFileName?: string;
@@ -49,6 +51,7 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({
   settings,
   onChange,
   onClose,
+  onInfoOpen,
   onUploadFile,
   onRemoveFile,
   selectedFileName,
@@ -80,14 +83,14 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({
         }}
         aria-disabled={disabled}
         className={clsx(
-          'mb-4 w-full flex items-center gap-3 p-3 rounded-xl border border-dashed bg-white dark:bg-gray-900 transition-all',
+          'yap-glass-card yap-hover-lift yap-glow-in mb-4 w-full flex items-center gap-3 p-3 rounded-xl border border-dashed bg-white dark:bg-gray-900 transition-all',
           selectedFileName
             ? 'border-green-300 dark:border-green-800 hover:border-green-500 dark:hover:border-green-600'
             : 'border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
-        <div className="p-2 rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <div className="p-2 rounded-lg bg-gray-100 text-gray-500 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]">
           <Upload size={18} />
         </div>
         <div className="min-w-0 flex-1 text-left">
@@ -127,9 +130,9 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({
               onClick={() => onChange({ processingType: option.id })}
               disabled={disabled}
               className={clsx(
-                'w-full rounded-xl border p-3 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed',
+                'yap-glass-card yap-hover-lift yap-glow-in w-full rounded-xl border p-3 text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed',
                 selected
-                  ? 'border-purple-600 dark:border-purple-500 shadow-sm bg-white dark:bg-gray-900'
+                  ? 'yap-glass-active border-purple-600 dark:border-[var(--yap-active-border)] shadow-sm bg-white dark:bg-transparent'
                   : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-purple-300 dark:hover:border-purple-700'
               )}
             >
@@ -138,21 +141,23 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({
                   className={clsx(
                     'p-2 rounded-lg transition-colors',
                     selected
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                      : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                      ? 'yap-icon-mist bg-purple-100 text-purple-700 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]'
+                      : 'bg-gray-100 text-gray-500 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-text-2)]'
                   )}
                 >
                   <Icon size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{option.title}</p>
-                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">{option.description}</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-[var(--yap-text-1)]">{option.title}</p>
+                  <p className="text-xs text-gray-400 dark:text-[var(--yap-text-2)] mt-1 leading-relaxed">{option.description}</p>
                 </div>
               </div>
             </button>
           );
         })}
       </div>
+
+      <PanelFooterLinks onInfoOpen={onInfoOpen} />
     </div>
   );
 };

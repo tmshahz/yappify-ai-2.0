@@ -21,44 +21,44 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
       footer={
         <button
           onClick={onClose}
-          className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+          className="yap-violet-button w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
         >
           Got it
         </button>
       }
     >
       <div className="space-y-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-          <strong className="text-gray-900 dark:text-gray-100">Yappify</strong> turns voice
+        <p className="text-sm text-gray-600 dark:text-[var(--yap-text-2)] leading-relaxed">
+          <strong className="text-gray-900 dark:text-[var(--yap-text-1)]">Yappify</strong> turns voice
           and audio files into transcripts, prompts, translations, and meeting artifacts using
           Google Gemini.
         </p>
 
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 rounded-xl p-4">
-          <h3 className="text-xs font-bold text-purple-900 dark:text-purple-100 uppercase tracking-wider mb-3">
+        <div className="yap-glass-card bg-purple-50 dark:bg-[var(--yap-violet-mist)] border border-purple-100 dark:border-[var(--yap-active-border)] rounded-xl p-4">
+          <h3 className="text-xs font-bold text-purple-900 dark:text-[var(--yap-text-1)] uppercase tracking-wider mb-3">
             Workflow
           </h3>
-          <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <ol className="space-y-2 text-sm text-gray-700 dark:text-[var(--yap-text-2)]">
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
+              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-[var(--yap-violet)] text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
               <span><strong>Choose a mode</strong> - Speech-to-Text, Translate, or Upload.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
+              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-[var(--yap-violet)] text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
               <span><strong>Record or upload</strong> - capture audio or select an audio file.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
+              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 dark:bg-[var(--yap-violet)] text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
               <span><strong>Process</strong> - promptify, translate, or generate upload outputs.</span>
             </li>
           </ol>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+        <div className="yap-glass-card bg-gray-50 dark:bg-[rgba(255,255,255,0.035)] rounded-xl p-4 space-y-3">
+          <h3 className="text-xs font-bold text-gray-700 dark:text-[var(--yap-text-1)] uppercase tracking-wider">
             Important Notes
           </h3>
-          <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+          <ul className="space-y-2 text-sm text-gray-600 dark:text-[var(--yap-text-2)]">
             <li>Runs entirely on Google Gemini with your API key.</li>
             <li>History, custom modes, settings, and analytics are stored locally in this browser.</li>
             <li>Audio files are processed in memory and are not persisted by Yappify.</li>

@@ -191,14 +191,14 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
     >
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
-          <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+          <span className="text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">Theme</span>
+          <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-[var(--yap-surface-2)]">
             <button
               type="button"
               onClick={() => onUpdateSettings({ ...safeSettings, theme: 'light' })}
               className={clsx(
                 'rounded-md p-1.5 transition-all',
-                safeSettings.theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-gray-400'
+                safeSettings.theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-gray-400 dark:text-[var(--yap-text-2)]'
               )}
             >
               <Sun size={16} />
@@ -208,7 +208,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
               onClick={() => onUpdateSettings({ ...safeSettings, theme: 'dark' })}
               className={clsx(
                 'rounded-md p-1.5 transition-all',
-                safeSettings.theme === 'dark' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400'
+                safeSettings.theme === 'dark' ? 'bg-gray-700 dark:bg-[var(--yap-violet-mist)] text-white shadow-sm' : 'text-gray-400'
               )}
             >
               <Moon size={16} />
@@ -217,7 +217,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">
             <Mic size={14} /> Microphone
           </label>
           <select
@@ -225,7 +225,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
             onChange={(event) =>
               onUpdateSettings({ ...safeSettings, microphoneId: event.target.value })
             }
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            className="yap-glass-input w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)]"
           >
             <option value="">Default Microphone</option>
             {microphones.map((mic) => (
@@ -237,7 +237,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">
             <Cpu size={14} /> AI Model
             {loadingModels && (
               <span className="text-xs text-gray-400">(Checking availability...)</span>
@@ -246,7 +246,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
           <select
             value={safeSettings.modelId}
             onChange={(event) => onUpdateSettings({ ...safeSettings, modelId: event.target.value })}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            className="yap-glass-input w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)]"
           >
             {curatedModels.map((model) => (
               <option key={model.name} value={model.name}>
@@ -266,9 +266,9 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
           )}
         </div>
 
-        <div className="space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <div className="space-y-3 border-t border-gray-100 pt-4 dark:border-[var(--yap-glass-border)]">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)]">
               Gemini API Key
             </label>
             <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
                 }
                 className={clsx(
                   'relative h-5 w-9 rounded-full transition-colors',
-                  safeSettings.saveApiKey ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
+                  safeSettings.saveApiKey ? 'bg-purple-600 dark:bg-[var(--yap-violet)]' : 'bg-gray-200 dark:bg-[var(--yap-surface-3)]'
                 )}
               >
                 <div
@@ -299,13 +299,13 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
               value={safeSettings.apiKey}
               onChange={(event) => onUpdateSettings({ ...safeSettings, apiKey: event.target.value })}
               placeholder="Enter your Gemini API Key"
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              className="yap-glass-input min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)]"
             />
             <button
               type="button"
               onClick={handleDeleteKey}
               title="Delete API Key"
-              className="rounded-lg border border-gray-200 p-2 text-red-500 transition-colors hover:bg-red-50 dark:border-gray-700 dark:hover:bg-red-900/20"
+              className="rounded-lg border border-gray-200 dark:border-[var(--yap-glass-border)] p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
             >
               <Trash2 size={18} />
             </button>
@@ -320,20 +320,20 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
         <button
           type="button"
           onClick={onOpenAnalytics}
-          className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-purple-300 dark:border-gray-800 dark:bg-gray-800/50 dark:hover:border-purple-700"
+          className="yap-glass-card flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-purple-300 dark:border-[var(--yap-glass-border)] dark:bg-[rgba(255,255,255,0.035)] dark:hover:border-[var(--yap-violet-ring)]"
         >
           <span className="flex items-center gap-3 text-left">
-            <span className="rounded-lg bg-purple-100 p-2 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+            <span className="rounded-lg bg-purple-100 p-2 text-purple-600 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]">
               <BarChart3 size={18} />
             </span>
             <span>
-              <span className="block text-sm font-semibold text-gray-800 dark:text-gray-100">
+              <span className="block text-sm font-semibold text-gray-800 dark:text-[var(--yap-text-1)]">
                 Usage Analytics
               </span>
               <span className="block text-xs text-gray-400">{formatUsageSummary(safeUsageValues)}</span>
             </span>
           </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-[var(--yap-violet-hover)]">
             View
           </span>
         </button>

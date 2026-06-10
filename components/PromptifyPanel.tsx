@@ -1,7 +1,8 @@
 import React from 'react';
 import { PromptMode, PromptModeDefinition } from '../types';
 import clsx from 'clsx';
-import { Zap, FileText, Sparkles, ExternalLink, PanelLeftClose, Info, Pencil, X } from 'lucide-react';
+import { Zap, FileText, Sparkles, PanelLeftClose, Info, Pencil, X } from 'lucide-react';
+import { PanelFooterLinks } from './PanelFooterLinks';
 
 interface PromptifyPanelProps {
   currentMode: PromptMode;
@@ -69,11 +70,11 @@ export const PromptifyPanel: React.FC<PromptifyPanelProps> = ({
                 }
               }}
               className={clsx(
-                "group relative w-full rounded-xl transition-all duration-200",
+                "yap-glass-card yap-hover-lift yap-glow-in group relative w-full rounded-xl transition-all duration-200",
                 "border hover:border-purple-300 dark:hover:border-purple-700",
                 disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                 isSelected
-                  ? "border-purple-600 dark:border-purple-500 shadow-sm"
+                  ? "yap-glass-active border-purple-600 dark:border-[var(--yap-active-border)] shadow-sm"
                   : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
               )}
             >
@@ -81,13 +82,13 @@ export const PromptifyPanel: React.FC<PromptifyPanelProps> = ({
                 <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   <div className={clsx(
                     "p-2 rounded-lg transition-colors",
-                    isSelected ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 group-hover:bg-purple-50 dark:group-hover:bg-purple-900/20"
+                    isSelected ? "yap-icon-mist bg-purple-100 text-purple-700 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]" : "bg-gray-100 text-gray-500 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-text-2)] group-hover:bg-purple-50 dark:group-hover:text-[var(--yap-violet-hover)]"
                   )}>
                     <Icon size={18} />
                   </div>
                   <span className={clsx(
                     "truncate text-sm font-medium",
-                    isSelected ? "text-purple-900 dark:text-purple-100" : "text-gray-700 dark:text-gray-300"
+                    isSelected ? "text-purple-900 dark:text-[var(--yap-text-1)]" : "text-gray-700 dark:text-[var(--yap-text-2)]"
                   )}>
                     {m.title}
                   </span>
@@ -138,27 +139,7 @@ export const PromptifyPanel: React.FC<PromptifyPanelProps> = ({
         })}
       </div>
 
-      {/* Bottom Section with Info and About */}
-      <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 space-y-3">
-        {onInfoOpen && (
-          <button
-            onClick={onInfoOpen}
-            className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors w-full"
-          >
-            <Info size={16} />
-            <span>How to Use</span>
-          </button>
-        )}
-        <a
-          href="https://www.tmshahz.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-        >
-          <ExternalLink size={16} />
-          <span>About Developer</span>
-        </a>
-      </div>
+      {onInfoOpen && <PanelFooterLinks onInfoOpen={onInfoOpen} />}
     </div>
   );
 };

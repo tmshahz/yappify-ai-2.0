@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
+import clsx from 'clsx';
 import { AppMode } from '../types';
 import { getAppModeLabel } from '../utils/labels';
 
@@ -11,12 +12,12 @@ interface ModeSwitcherProps {
 
 export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({ mode, onModeChange, disabled }) => {
   return (
-    <div className="relative inline-flex items-center justify-center border-b border-gray-900 dark:border-gray-100 pb-1">
+    <div className={clsx('yap-mode-switcher', disabled && 'is-disabled')}>
       <select
         value={mode}
         onChange={(event) => onModeChange(event.target.value as AppMode)}
         disabled={disabled}
-        className="appearance-none bg-transparent pl-6 pr-6 text-center text-lg lg:text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 focus:outline-none disabled:opacity-50 cursor-pointer"
+        className="yap-mode-switcher__select"
         title="Application mode"
       >
         {(Object.values(AppMode) as AppMode[]).map((value) => (
@@ -25,7 +26,7 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({ mode, onModeChange, 
           </option>
         ))}
       </select>
-      <ChevronDown size={18} className="pointer-events-none absolute right-0 text-gray-400" />
+      <ChevronDown size={14} strokeWidth={2.25} className="yap-mode-switcher__chevron" aria-hidden />
     </div>
   );
 };

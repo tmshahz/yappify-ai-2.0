@@ -4,7 +4,7 @@ import { LEGACY_KEYS, readLegacyStorage, readStorage, STORAGE_KEYS, writeStorage
 import { DEFAULT_MODEL_ID } from '../services/geminiService';
 
 export const DEFAULT_SETTINGS: SettingsData = {
-  theme: 'light',
+  theme: 'dark',
   apiKey: '',
   microphoneId: '',
   saveApiKey: false,

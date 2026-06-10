@@ -111,14 +111,14 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         <div className="flex gap-3 justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="yap-ghost-button px-4 py-2 text-sm font-medium text-gray-700 dark:text-[var(--yap-text-2)] hover:bg-gray-100 dark:hover:bg-[var(--yap-glass-hover)] rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleUpload}
             disabled={!selectedFile}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            className="yap-violet-button px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-[var(--yap-surface-3)] disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
           >
             {actionLabel}
           </button>
@@ -143,7 +143,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
           )}
 
           {/* Info Panel */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="yap-glass-card bg-blue-50 dark:bg-[rgba(255,255,255,0.035)] border border-blue-200 dark:border-[var(--yap-glass-border)] rounded-lg p-4">
             <div className="flex gap-3">
               <AlertCircle size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-900 dark:text-blue-100 space-y-2">
@@ -160,10 +160,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
           {/* Drag & Drop Zone */}
           <div
             className={clsx(
-              "relative border-2 border-dashed rounded-xl p-8 transition-all",
+              "yap-drop-zone relative rounded-xl p-8 transition-all",
               dragActive 
-                ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" 
-                : "border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600",
+                ? "is-drag-active border-purple-500 bg-purple-50 dark:bg-[var(--yap-violet-mist)]" 
+                : "border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-[var(--yap-violet-ring)]",
               selectedFile && "border-green-500 bg-green-50 dark:bg-green-900/20"
             )}
             onDragEnter={handleDrag}
@@ -181,16 +181,16 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
             {!selectedFile ? (
               <div className="flex flex-col items-center justify-center text-center">
-                <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                  <Upload size={32} className="text-gray-400" />
+                <div className="p-4 rounded-full bg-gray-100 dark:bg-[var(--yap-violet-mist)] mb-4">
+                  <Upload size={32} className="text-gray-400 dark:text-[var(--yap-violet-hover)]" />
                 </div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-[var(--yap-text-1)] mb-2">
                   Drag & drop your audio file here
                 </p>
-                <p className="text-xs text-gray-500 mb-4">or</p>
+                <p className="text-xs text-gray-500 dark:text-[var(--yap-text-2)] mb-4">or</p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="yap-violet-button px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Browse Files
                 </button>
@@ -201,11 +201,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <File size={16} className="text-green-600 flex-shrink-0" />
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <p className="text-sm font-medium text-gray-900 dark:text-[var(--yap-text-1)] truncate">
                       {selectedFile.name}
                     </p>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-[var(--yap-text-2)]">
                     {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
                   <button
@@ -213,7 +213,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                       setSelectedFile(null);
                       setError(null);
                     }}
-                    className="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 mt-2 font-medium"
+                    className="text-xs text-purple-600 hover:text-purple-700 dark:text-[var(--yap-violet-hover)] mt-2 font-medium"
                   >
                     Choose different file
                   </button>

@@ -29,21 +29,21 @@ export const PromptModeInfoModal: React.FC<PromptModeInfoModalProps> = ({
       footer={
         <button
           onClick={onClose}
-          className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+          className="yap-violet-button w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
         >
           Got it
         </button>
       }
     >
       <div className="space-y-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        <p className="text-sm text-gray-600 dark:text-[var(--yap-text-2)] leading-relaxed">
           {mode.description}
         </p>
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+        <div className="yap-glass-card bg-gray-50 dark:bg-[rgba(255,255,255,0.035)] rounded-xl p-4">
+          <h3 className="text-xs font-bold text-gray-700 dark:text-[var(--yap-text-1)] uppercase tracking-wider mb-2">
             Instructions
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p className="text-sm text-gray-600 dark:text-[var(--yap-text-2)] leading-relaxed">
             {mode.instructions}
           </p>
         </div>

@@ -38,7 +38,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
           <button
             onClick={onClear}
             disabled={records.length === 0}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 text-xs font-bold"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 text-xs font-bold transition-colors"
           >
             <Trash2 size={14} /> Clear
           </button>
@@ -57,18 +57,18 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Calls</h3>
           <div className="max-h-80 overflow-y-auto custom-scrollbar space-y-2 pr-2">
             {records.length === 0 ? (
-              <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-6 text-center text-sm text-gray-400">
+              <div className="yap-glass-card rounded-xl border border-gray-100 dark:border-[var(--yap-glass-border)] p-6 text-center text-sm text-gray-400">
                 No analytics recorded yet.
               </div>
             ) : (
               records.slice().reverse().map((record) => (
                 <div
                   key={record.id}
-                  className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-3"
+                  className="yap-glass-card rounded-xl border border-gray-100 dark:border-[var(--yap-glass-border)] bg-white dark:bg-[rgba(255,255,255,0.035)] p-3"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-[var(--yap-text-1)]">
                         {record.action}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -76,7 +76,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
+                      <p className="text-sm font-bold text-gray-800 dark:text-[var(--yap-text-1)]">
                         ${record.cost.toFixed(4)}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -95,8 +95,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({
 };
 
 const Metric = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
-    <div className="text-lg font-bold text-gray-900 dark:text-white">{value}</div>
-    <div className="text-[10px] text-gray-500 uppercase mt-1">{label}</div>
+  <div className="yap-glass-card rounded-xl bg-gray-50 dark:bg-[rgba(255,255,255,0.035)] p-4">
+    <div className="text-lg font-bold text-gray-900 dark:text-[var(--yap-text-1)]">{value}</div>
+    <div className="text-[10px] text-gray-500 dark:text-[var(--yap-text-2)] uppercase mt-1">{label}</div>
   </div>
 );

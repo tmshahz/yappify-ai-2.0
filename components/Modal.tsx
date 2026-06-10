@@ -52,7 +52,8 @@ export const Modal: React.FC<ModalProps> = ({
     >
       {/* Backdrop */}
       <div
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }}
+        className="yap-modal-backdrop"
+        style={{ position: 'absolute', inset: 0 }}
         aria-hidden="true"
         onClick={onClose}
       />
@@ -67,20 +68,20 @@ export const Modal: React.FC<ModalProps> = ({
         >
           <div
             className={clsx(
-              'relative w-full flex flex-col rounded-2xl',
-              'bg-white dark:bg-gray-900',
-              'border border-gray-100 dark:border-gray-800 shadow-2xl',
+              'yap-glass-panel yap-panel-enter relative w-full flex flex-col rounded-2xl dark:rounded-[var(--yap-radius-xl)]',
+              'bg-white dark:bg-transparent',
+              'border border-gray-100 dark:border-[var(--yap-glass-border)] shadow-2xl',
               'max-h-[85vh]',
               maxWidthClass[maxWidth]
             )}
           >
             {/* Header */}
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20 px-4 py-4 sm:px-6">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 dark:border-[var(--yap-glass-border)] bg-gray-50/50 dark:bg-[rgba(255,255,255,0.025)] px-4 py-4 sm:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 {icon}
                 <h2
                   id="modal-title"
-                  className="truncate text-lg font-semibold text-gray-900 dark:text-white"
+                  className="truncate text-lg font-semibold text-gray-900 dark:text-[var(--yap-text-1)]"
                 >
                   {title}
                 </h2>
@@ -88,7 +89,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="ml-4 flex-shrink-0 rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="ml-4 flex-shrink-0 rounded-full p-2 text-gray-500 dark:text-[var(--yap-text-2)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--yap-glass-hover)]"
                 aria-label="Close"
               >
                 <X size={20} />
@@ -101,7 +102,7 @@ export const Modal: React.FC<ModalProps> = ({
             </div>
 
             {footer && (
-              <div className="flex-shrink-0 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-4 sm:px-6">
+              <div className="flex-shrink-0 border-t border-gray-100 dark:border-[var(--yap-glass-border)] bg-gray-50 dark:bg-[rgba(255,255,255,0.025)] px-4 py-4 sm:px-6">
                 {footer}
               </div>
             )}

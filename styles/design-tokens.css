@@ -1,0 +1,72 @@
+:root {
+  /* Background system */
+  --yap-void:       #0A090F;
+  --yap-surface-1:  #110F1A;
+  --yap-surface-2:  #1A1726;
+  --yap-surface-3:  #221F30;
+  --yap-glass:      rgba(255,255,255,0.04);
+  --yap-glass-border: rgba(255,255,255,0.08);
+  --yap-glass-hover: rgba(255,255,255,0.06);
+
+  /* Accent system */
+  --yap-violet:        #7C5CFC;
+  --yap-violet-hover:  #8B6EFD;
+  --yap-violet-dim:    #5B42C4;
+  --yap-violet-glow:   rgba(124,92,252,0.15);
+  --yap-violet-mist:   rgba(124,92,252,0.08);
+  --yap-violet-ring:   rgba(124,92,252,0.35);
+  --yap-active-bg:     rgba(124,92,252,0.10);
+  --yap-active-border: rgba(124,92,252,0.28);
+
+  /* Recording state */
+  --yap-record:      #FF6B6B;
+  --yap-record-glow: rgba(255,107,107,0.20);
+
+  /* Text hierarchy */
+  --yap-text-1: #F0EDF8;
+  --yap-text-2: #8B87A0;
+  --yap-text-3: #4E4B61;
+
+  /* Typography */
+  --yap-font:      'Geist', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --yap-font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --yap-radius-sm:  6px;
+  --yap-radius-md:  10px;
+  --yap-radius-lg:  14px;
+  --yap-radius-xl:  20px;
+  --yap-radius-full: 9999px;
+
+  /* Motion */
+  --yap-ease:        cubic-bezier(0.16, 1, 0.3, 1);
+  --yap-ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --yap-duration-sm: 120ms;
+  --yap-duration-md: 200ms;
+  --yap-duration-lg: 350ms;
+
+  /* Light atmosphere */
+  --yap-light-void:    #F8F5FF;
+  --yap-light-surface: #FFFCF8;
+  --yap-light-panel:   rgba(255,255,255,0.66);
+  --yap-light-glass:   rgba(255,255,255,0.58);
+  --yap-light-border:  rgba(124,92,252,0.14);
+  --yap-light-hover:   rgba(255,255,255,0.78);
+  --yap-lavender-1:    #F1EAFF;
+  --yap-lavender-2:    #E7DCFF;
+  --yap-lavender-3:    #C8B7FF;
+  --yap-light-text-1:  #201A2E;
+  --yap-light-text-2:  #625B73;
+  --yap-light-text-3:  #9A92AD;
+
+  /* Atmosphere and elevation */
+  --yap-aura-violet: rgba(124,92,252,0.22);
+  --yap-aura-soft:   rgba(185,160,255,0.22);
+  --yap-aura-warm:   rgba(255,236,213,0.42);
+  --yap-elevation-1: 0 14px 36px rgba(34,24,76,0.10), 0 1px 0 rgba(255,255,255,0.45) inset;
+  --yap-elevation-2: 0 24px 70px rgba(34,24,76,0.16), 0 1px 0 rgba(255,255,255,0.52) inset;
+  --yap-elevation-3: 0 34px 110px rgba(31,20,74,0.24), 0 1px 0 rgba(255,255,255,0.62) inset;
+  --yap-dark-elevation-1: 0 18px 50px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.06) inset;
+  --yap-dark-elevation-2: 0 30px 90px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.08) inset;
+  --yap-dark-elevation-3: 0 42px 130px rgba(0,0,0,0.48), 0 1px 0 rgba(255,255,255,0.10) inset;
+}
