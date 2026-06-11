@@ -302,7 +302,11 @@ body {
 
 .yap-output-surface {
   position: relative;
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   isolation: isolate;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.56)),
@@ -341,7 +345,11 @@ body {
 
 .dark .yap-output-surface {
   position: relative;
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   isolation: isolate;
   background: rgba(255,255,255,0.025);
   border-color: var(--yap-glass-border);

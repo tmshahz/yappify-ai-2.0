@@ -57,6 +57,7 @@ import { UploadPanel } from './components/UploadPanel';
 import { HistoryPreviewModal } from './components/HistoryPreviewModal';
 import { AnalyticsModal } from './components/AnalyticsModal';
 import { OutputMarkdown } from './components/OutputMarkdown';
+import { shouldUsePlainRawOutput } from './utils/outputDisplay';
 
 class MarkdownErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback: string },
@@ -243,6 +244,11 @@ function App() {
     }
     if (!requireApiKey()) return null;
 
+    if (prefs.activeMode === AppMode.UPLOAD) {
+      await handleProcessUpload();
+      return null;
+    }
+
     setAppState(AppState.TRANSCRIBING);
     setError(null);
     setTransformedTranscript('');
@@ -346,6 +352,7 @@ function App() {
       } else {
         const result = await processUpload(sourceBlob, prefs.upload.processingType, settings.apiKey, settings.modelId);
         setRawTranscript(result.text);
+        setTransformedTranscript('');
         setViewMode(ViewMode.RAW);
         setAppState(AppState.READY);
         trackUsage(result.usage, label, AppMode.UPLOAD);
@@ -367,10 +374,18 @@ function App() {
 
   const getUploadTransformInstructions = (type: AppPrefs['upload']['processingType']) => {
     if (type === 'meeting-summary') {
-      return 'Create a structured media summary from this transcript. Include Summary, Key Points, Notable Details, Risks, and Follow-ups.';
+      return [
+        'Create a structured media summary from this transcript.',
+        'Return markdown with sections for Summary, Key Topics, Key Takeaways, Important Quotes, Risks, and Next Steps where applicable.',
+        'Use clear headings and concise bullet lists.',
+      ].join(' ');
     }
     if (type === 'action-items') {
-      return 'Extract actionable meeting tasks from this transcript. Include task, owner if mentioned, due date if mentioned, and relevant context.';
+      return [
+        'Extract actionable tasks from this transcript.',
+        'Return markdown with sections for Action Items, Owners, Deadlines, and Next Steps where applicable.',
+        'List each task with owner, due date, and context when mentioned.',
+      ].join(' ');
     }
     return 'Clean up this transcript while preserving meaning.';
   };
@@ -707,7 +722,7 @@ function App() {
             </div>
           </header>
 
-          <div className="yap-hero-stack px-6 flex flex-col gap-5">
+          <div className="yap-hero-stack flex-shrink-0 px-6 flex flex-col gap-5">
             <div className="yap-hero-controls flex items-center justify-center gap-6">
               <button
                 onClick={handleTranscribe}
@@ -798,7 +813,7 @@ function App() {
                 <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
                   <OutputMarkdown
                     content={sanitizeText(currentDisplay)}
-                    raw={viewMode === ViewMode.RAW}
+                    plainRaw={shouldUsePlainRawOutput(viewMode, prefs.activeMode)}
                   />
                 </MarkdownErrorBoundary>
               ) : (

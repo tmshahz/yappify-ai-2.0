@@ -1,10 +1,14 @@
 const KNOWN_SECTIONS = new Set([
   'translation',
   'transliteration',
+  'original text',
   'executive summary',
   'action items',
   'key decisions',
   'key points',
+  'key takeaways',
+  'key topics',
+  'important quotes',
   'notable details',
   'follow-ups',
   'follow ups',
@@ -24,10 +28,15 @@ const KNOWN_SECTIONS = new Set([
   'decisions',
   'themes',
   'attendees',
+  'owners',
+  'deadlines',
   'tasks',
   'notes',
   'prompt output',
+  'context',
 ]);
+
+const SPEAKER_LABEL = /^Speaker\s+([A-Z0-9]+)\s*:?\s*(.*)$/i;
 
 function normalizeLabel(label: string): string {
   return label.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -69,6 +78,17 @@ export function formatOutputMarkdown(text: string): string {
 
     if (/^#{1,6}\s+/.test(trimmed)) {
       output.push(line);
+      continue;
+    }
+
+    const speakerMatch = trimmed.match(SPEAKER_LABEL);
+    if (speakerMatch) {
+      const speaker = `Speaker ${speakerMatch[1].toUpperCase()}`;
+      const rest = speakerMatch[2].trim();
+      output.push('');
+      output.push(`## ${speaker}`);
+      output.push('');
+      if (rest) output.push(rest);
       continue;
     }
 

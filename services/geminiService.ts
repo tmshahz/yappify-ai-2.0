@@ -239,13 +239,27 @@ export const processUpload = async (
 function getUploadPrompt(processingType: UploadProcessingType): string {
   switch (processingType) {
     case 'raw-transcription':
-      return 'Transcribe this uploaded audio. Return ONLY the transcript. Do not add intro/outro text.';
+      return 'Transcribe this uploaded audio. Return ONLY the full transcript. Do not add intro/outro text, headings, or commentary.';
     case 'speaker-transcript':
-      return 'Transcribe this audio with speaker separation where possible. Use labels like Speaker A, Speaker B, Speaker C. Return clean markdown.';
+      return [
+        'Transcribe this audio with speaker separation where possible.',
+        'Label each turn as Speaker A, Speaker B, Speaker C, and so on.',
+        'Return markdown with each speaker label as a heading followed by that speaker\'s words.',
+        'Do not add intro/outro text.',
+      ].join(' ');
     case 'meeting-summary':
-      return 'Analyze this media audio. Return a concise structured media summary with sections for Summary, Key Points, Notable Details, Risks, and Follow-ups.';
+      return [
+        'Analyze this media audio and return a structured summary.',
+        'Use markdown headings for Summary, Key Topics, Key Takeaways, Important Quotes, Risks, and Next Steps where applicable.',
+        'Do not return a raw transcript.',
+      ].join(' ');
     case 'action-items':
-      return 'Analyze this audio. Extract actionable tasks only. Return markdown with task, owner if mentioned, due date if mentioned, and context.';
+      return [
+        'Analyze this audio and extract actionable tasks only.',
+        'Return markdown with sections for Action Items, Owners, Deadlines, and Next Steps where applicable.',
+        'List each task with owner, due date, and context when mentioned.',
+        'Do not return a raw transcript.',
+      ].join(' ');
     default:
       return 'Transcribe this uploaded audio. Return clean markdown.';
   }

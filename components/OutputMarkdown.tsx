@@ -5,17 +5,18 @@ import { formatOutputMarkdown } from '../utils/formatOutputMarkdown';
 
 interface OutputMarkdownProps {
   content: string;
-  raw?: boolean;
+  /** Plain monospace transcript view (Speech-to-Text RAW tab only). */
+  plainRaw?: boolean;
 }
 
-export const OutputMarkdown: React.FC<OutputMarkdownProps> = ({ content, raw = false }) => {
+export const OutputMarkdown: React.FC<OutputMarkdownProps> = ({ content, plainRaw = false }) => {
   const markdown = useMemo(
-    () => (raw ? content : formatOutputMarkdown(content)),
-    [content, raw]
+    () => (plainRaw ? content : formatOutputMarkdown(content)),
+    [content, plainRaw]
   );
 
   return (
-    <div className={clsx('yap-output-prose', raw && 'yap-output-prose--raw yap-mono-output')}>
+    <div className={clsx('yap-output-prose', plainRaw && 'yap-output-prose--raw yap-mono-output')}>
       <ReactMarkdown>{markdown}</ReactMarkdown>
     </div>
   );
