@@ -13,6 +13,10 @@ interface ModalProps {
   icon?: React.ReactNode;
   /** Tall dialogs (e.g. Settings) should start from the top on mobile so the header stays visible. */
   align?: 'center' | 'start';
+  /** Used when stacking modals so the top layer receives focus and backdrop clicks. */
+  zIndex?: number;
+  titleId?: string;
+  closeOnEscape?: boolean;
 }
 
 const maxWidthClass = {
@@ -31,24 +35,27 @@ export const Modal: React.FC<ModalProps> = ({
   maxWidth = 'md',
   icon,
   align = 'center',
+  zIndex = 9999,
+  titleId = 'modal-title',
+  closeOnEscape = true,
 }) => {
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !closeOnEscape) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
   return createPortal(
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+      style={{ position: 'fixed', inset: 0, zIndex }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
+      aria-labelledby={titleId}
     >
       {/* Backdrop */}
       <div
@@ -80,7 +87,7 @@ export const Modal: React.FC<ModalProps> = ({
               <div className="flex min-w-0 items-center gap-3">
                 {icon}
                 <h2
-                  id="modal-title"
+                  id={titleId}
                   className="truncate text-lg font-semibold text-gray-900 dark:text-[var(--yap-text-1)]"
                 >
                   {title}

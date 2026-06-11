@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Modal } from './Modal';
+import { KeyboardShortcutsGuide } from './KeyboardShortcutsGuide';
+import { ApiKeyPrivacyModal } from './ApiKeyPrivacyModal';
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -8,10 +10,14 @@ interface InfoModalProps {
 }
 
 export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      closeOnEscape={!isPrivacyOpen}
       title="How to Use Yappify"
       icon={
         <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
@@ -65,6 +71,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
           </ul>
         </div>
 
+        <KeyboardShortcutsGuide />
+
         <div className="pt-2 space-y-2">
           <a
             href="https://ai.google.dev/gemini-api/docs"
@@ -82,8 +90,18 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
           >
             Get your Gemini API key
           </a>
+          <button
+            type="button"
+            onClick={() => setIsPrivacyOpen(true)}
+            className="block w-full text-left text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+          >
+            API Key Privacy &amp; Security
+          </button>
         </div>
       </div>
     </Modal>
+
+    <ApiKeyPrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+    </>
   );
 };

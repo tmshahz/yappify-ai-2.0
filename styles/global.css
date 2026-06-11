@@ -1,7 +1,35 @@
 html,
 body,
 #root {
-  font-family: var(--yap-font);
+  font-family: var(--yap-font, 'Geist', sans-serif);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 20px;
 }
 
 body {
@@ -390,6 +418,66 @@ body {
   border: 1px solid var(--yap-active-border);
   color: var(--yap-text-1);
   box-shadow: none;
+}
+
+.yap-kbd-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--yap-radius-sm);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #eef0f4 100%);
+  border: 1px solid rgba(124, 92, 252, 0.16);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 2px 0 rgba(34, 24, 76, 0.08),
+    0 4px 10px rgba(34, 24, 76, 0.08);
+  font-family: var(--yap-font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--yap-light-text-1);
+}
+
+.dark .yap-kbd-key {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid var(--yap-glass-border);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.28);
+  color: var(--yap-text-1);
+}
+
+.yap-kbd-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    '. up .'
+    'left down right';
+  gap: 1rem 0.75rem;
+  align-items: start;
+  justify-items: center;
+  padding: 0.25rem 0;
+}
+
+.yap-kbd-layout__up {
+  grid-area: up;
+}
+
+.yap-kbd-layout__left {
+  grid-area: left;
+}
+
+.yap-kbd-layout__down {
+  grid-area: down;
+}
+
+.yap-kbd-layout__right {
+  grid-area: right;
 }
 
 .yap-mode-switcher {
@@ -858,6 +946,29 @@ body {
   .yap-panel-enter {
     animation: yap-panel-enter var(--yap-duration-lg) var(--yap-ease);
   }
+}
+
+@keyframes yap-copy-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.yap-copy-toast {
+  animation: yap-copy-toast 1s ease forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

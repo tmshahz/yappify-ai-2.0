@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Clock,
   Copy,
@@ -57,7 +57,9 @@ import { UploadPanel } from './components/UploadPanel';
 import { HistoryPreviewModal } from './components/HistoryPreviewModal';
 import { AnalyticsModal } from './components/AnalyticsModal';
 import { OutputMarkdown } from './components/OutputMarkdown';
+import { CopyToast } from './components/CopyToast';
 import { shouldUsePlainRawOutput } from './utils/outputDisplay';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 class MarkdownErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback: string },
@@ -137,6 +139,7 @@ function App() {
   const [editingCustomMode, setEditingCustomMode] = useState<CustomModeData | null>(null);
   const [infoPromptMode, setInfoPromptMode] = useState<PromptModeDefinition | null>(null);
   const [previewHistoryItem, setPreviewHistoryItem] = useState<HistoryItem | null>(null);
+  const [copyToastKey, setCopyToastKey] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -434,9 +437,15 @@ function App() {
     setMobileRightOpen(false);
   };
 
-  const handleCopy = () => {
+  const showCopyToast = useCallback(() => {
+    setCopyToastKey((key) => key + 1);
+  }, []);
+
+  const handleCopy = useCallback(() => {
+    if (!currentDisplay) return;
     navigator.clipboard.writeText(currentDisplay);
-  };
+    showCopyToast();
+  }, [currentDisplay, showCopyToast]);
 
   const handleDownload = () => {
     const blob = new Blob([currentDisplay], { type: 'text/markdown' });
@@ -543,6 +552,17 @@ function App() {
     },
   }[prefs.activeMode];
   const RightIcon = rightAction.icon;
+
+  useKeyboardShortcuts({
+    onTalk: toggleRecording,
+    onTranscribe: handleTranscribe,
+    onRightAction: rightAction.onClick,
+    onCopy: handleCopy,
+    canTalk: !isProcessing,
+    canTranscribe: Boolean(audioBlob || uploadedFile) && !isProcessing,
+    canRightAction: !rightAction.disabled,
+    canCopy: Boolean(currentDisplay),
+  });
 
   const statusText =
     appState === AppState.RECORDING
@@ -878,6 +898,8 @@ function App() {
               {error}
             </div>
           )}
+
+          <CopyToast showKey={copyToastKey} />
         </div>
 
         {prefs.showRightPanel && (
