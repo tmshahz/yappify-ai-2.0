@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-// Desktop-only shortcuts align with the app's lg: layout breakpoint (1024px).
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
 export type KeyboardShortcutActions = {
   onTalk: () => void;
@@ -21,15 +21,34 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return false;
 }
 
+/**
+ * True when the primary UI is touch-first with no mouse/trackpad (typical phone).
+ * We do not gate on viewport width so narrow desktop/PWA windows keep shortcuts.
+ * Tablets with a hardware keyboard still dispatch Arrow key events and are not blocked.
+ */
+function isLikelyTouchOnlyEnvironment(): boolean {
+  return (
+    window.matchMedia('(hover: none)').matches &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    !window.matchMedia('(any-pointer: fine)').matches
+  );
+}
+
+/** On-screen mobile keyboards do not emit arrow keys; ignore stray events on touch-only UIs. */
+function shouldIgnoreArrowKeyOnTouchUI(event: KeyboardEvent): boolean {
+  if (!ARROW_KEYS.has(event.key)) return false;
+  if (!isLikelyTouchOnlyEnvironment()) return false;
+  // Hardware keyboards (including iPad) report a stable code; skip only ambiguous touch-UI cases.
+  return event.code === '';
+}
+
 export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1024px)');
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!mediaQuery.matches) return;
+      if (shouldIgnoreArrowKeyOnTouchUI(event)) return;
       if (isTypingTarget(event.target)) return;
 
       const {

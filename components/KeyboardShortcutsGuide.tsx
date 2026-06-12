@@ -36,7 +36,7 @@ export const KeyboardShortcutsGuide: React.FC = () => {
   return (
     <div className="yap-glass-card bg-gray-50 dark:bg-[rgba(255,255,255,0.035)] rounded-xl p-4 space-y-4">
       <h3 className="text-xs font-bold text-gray-700 dark:text-[var(--yap-text-1)] uppercase tracking-wider">
-        Keyboard Shortcuts (Desktop)
+        Keyboard Shortcuts
       </h3>
 
       {/* Cross layout — tablet/desktop */}
@@ -82,7 +82,7 @@ export const KeyboardShortcutsGuide: React.FC = () => {
       </ul>
 
       <ul className="space-y-1.5 text-xs text-gray-500 dark:text-[var(--yap-text-2)] border-t border-gray-200/80 dark:border-[var(--yap-glass-border)] pt-3">
-        <li>Keyboard shortcuts are available on desktop devices.</li>
+        <li>Keyboard shortcuts are available when using a physical keyboard.</li>
         <li>Shortcuts are disabled while typing in text fields.</li>
         <li>The Down Arrow performs the same action as the Copy button.</li>
       </ul>
