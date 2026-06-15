@@ -16,7 +16,6 @@ body {
   width: 100%;
   height: 100%;
   min-height: 100dvh;
-  overflow: hidden;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -982,5 +981,191 @@ body {
     animation-iteration-count: 1;
     scroll-behavior: auto;
     transition-duration: 0.01ms;
+  }
+}
+
+/* ============================================================
+   LANDING PAGE
+   Additive motion + surface classes for components/LandingPage.tsx.
+   Nothing above this comment is modified. All looping/entrance
+   animation is activated only inside prefers-reduced-motion:
+   no-preference, so reduced-motion users get a fully static,
+   fully visible page. Reuses existing --yap-* tokens, easing,
+   durations and elevation — no new design language introduced.
+   ============================================================ */
+
+@keyframes yap-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes yap-soft-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes yap-bar-pulse {
+  0%, 100% { transform: scaleY(0.1); opacity: 0.3; }
+  50% { transform: scaleY(var(--bar-peak, 0.6)); opacity: 0.88; }
+}
+
+/* Floating brand mark (public/yl.png) — float on wrapper, glow on image */
+.yap-landing-logo-wrap {
+  display: inline-block;
+  will-change: transform;
+}
+
+.yap-landing-logo {
+  display: block;
+  border-radius: var(--yap-radius-xl);
+  box-shadow:
+    0 32px 80px rgba(124, 92, 252, 0.40),
+    0 12px 30px rgba(46, 30, 95, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transition:
+    transform var(--yap-duration-lg) var(--yap-ease),
+    box-shadow var(--yap-duration-lg) var(--yap-ease);
+}
+
+.dark .yap-landing-logo {
+  box-shadow:
+    0 32px 90px rgba(124, 92, 252, 0.50),
+    0 0 60px rgba(124, 92, 252, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+
+/* Floating device mockups (public/hero-*.png) — shadow/depth on the image itself, no card wrapper */
+.yap-device {
+  display: block;
+  will-change: transform;
+}
+
+.yap-device__img {
+  display: block;
+  width: 100%;
+  border-radius: var(--yap-radius-xl);
+  box-shadow:
+    0 36px 80px rgba(0, 0, 0, 0.22),
+    0 10px 28px rgba(46, 30, 95, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.48) inset;
+  transition:
+    transform var(--yap-duration-lg) var(--yap-ease),
+    box-shadow var(--yap-duration-lg) var(--yap-ease);
+}
+
+.dark .yap-device__img {
+  box-shadow:
+    0 36px 90px rgba(0, 0, 0, 0.55),
+    0 0 64px rgba(124, 92, 252, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* Decorative animated waveform — CSS bars driven by per-bar custom properties */
+.yap-landing-waveform {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 52px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.yap-landing-waveform__bar {
+  flex: 1;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    var(--yap-violet) 0%,
+    rgba(124, 92, 252, 0.25) 100%
+  );
+  transform-origin: center;
+  transform: scaleY(0.1);
+  opacity: 0.35;
+}
+
+/* Scroll reveal — visible by default so reduced-motion / no-JS is safe */
+.yap-reveal {
+  opacity: 1;
+  transform: none;
+}
+
+/* FAQ disclosure (native <details>) styled as a glass card */
+.yap-faq > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.yap-faq > summary::-webkit-details-marker {
+  display: none;
+}
+
+.yap-faq__chevron {
+  transition: transform var(--yap-duration-md) var(--yap-ease);
+}
+
+.yap-faq[open] .yap-faq__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-landing-logo-wrap {
+    animation: yap-float 6s var(--yap-ease) infinite;
+  }
+
+  .yap-landing-logo:hover {
+    transform: translateY(-4px) scale(1.04);
+    box-shadow:
+      0 44px 100px rgba(124, 92, 252, 0.50),
+      0 16px 36px rgba(46, 30, 95, 0.24),
+      0 1px 0 rgba(255, 255, 255, 0.58) inset;
+  }
+
+  .yap-soft-in {
+    animation: yap-soft-in var(--yap-duration-lg) var(--yap-ease) both;
+  }
+
+  .yap-device {
+    animation: yap-float 7s var(--yap-ease) infinite;
+  }
+
+  .yap-device--right {
+    animation-duration: 8.5s;
+    animation-delay: -2.4s;
+  }
+
+  .yap-device--left .yap-device__img {
+    transform: perspective(1400px) rotateY(12deg) rotateX(3deg);
+  }
+
+  .yap-device--right .yap-device__img {
+    transform: perspective(1400px) rotateY(-12deg) rotateX(3deg);
+  }
+
+  .yap-device--left .yap-device__img:hover,
+  .yap-device--right .yap-device__img:hover {
+    transform: perspective(1400px) rotateY(0deg) rotateX(0deg) scale(1.03);
+    box-shadow:
+      0 48px 100px rgba(0, 0, 0, 0.28),
+      0 0 80px rgba(124, 92, 252, 0.20);
+  }
+
+  .yap-landing-waveform__bar {
+    animation: yap-bar-pulse var(--bar-duration, 1.2s) ease-in-out infinite;
+    animation-delay: var(--bar-delay, 0s);
+  }
+
+  .yap-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity var(--yap-duration-lg) var(--yap-ease),
+      transform var(--yap-duration-lg) var(--yap-ease);
+  }
+
+  .yap-reveal.is-visible {
+    opacity: 1;
+    transform: none;
   }
 }

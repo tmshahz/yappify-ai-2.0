@@ -1,6 +1,7 @@
 {
   "name": "yappify-ai",
   "short_name": "yappify-ai",
+  "start_url": "/app",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
