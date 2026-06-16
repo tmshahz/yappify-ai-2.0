@@ -1043,10 +1043,21 @@ body {
     0 1px 0 rgba(255, 255, 255, 0.12) inset;
 }
 
-/* Hero title — vertical word cycle (fixed width avoids layout shift) */
+/* Hero title — two-line stack with vertical word cycle on line 2 */
+.yap-hero-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.12em;
+}
+
+.yap-hero-title__line {
+  display: block;
+}
+
 .yap-hero-cycle {
-  display: inline-block;
-  vertical-align: bottom;
+  display: block;
   height: 1.06em;
   min-width: 9.5ch;
   overflow: hidden;
@@ -1069,6 +1080,42 @@ body {
 /* Landing page anchor targets — offset for sticky nav */
 .yap-landing-anchor {
   scroll-margin-top: 72px;
+}
+
+/* Compact social icon row — hero + footer */
+.yap-social-links {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.yap-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--yap-radius-md);
+  color: #9A92AD;
+  transition:
+    color var(--yap-duration-md) var(--yap-ease),
+    background var(--yap-duration-md) var(--yap-ease),
+    transform var(--yap-duration-md) var(--yap-ease);
+}
+
+.dark .yap-social-link {
+  color: var(--yap-text-3);
+}
+
+.yap-social-link:hover {
+  color: var(--yap-violet);
+  background: rgba(124, 92, 252, 0.08);
+  transform: translateY(-1px);
+}
+
+.dark .yap-social-link:hover {
+  color: var(--yap-violet-hover);
+  background: var(--yap-violet-mist);
 }
 
 /* Floating device mockups (public/hero-*.png) — shadow/depth on the image itself, no card wrapper */

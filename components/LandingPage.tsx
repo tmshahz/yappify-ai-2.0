@@ -21,6 +21,7 @@ import {
   Upload,
   Users,
   Zap,
+  Github,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useSettings } from '../hooks/useSettings';
@@ -100,10 +101,10 @@ const HERO_CYCLE_WORDS = ['thoughts', 'prompts', 'ideas', 'notes', 'workflows'] 
 const HeroTitle: React.FC = () => (
   <h1
     aria-label="yapp your thoughts"
-    className="yap-text-primary font-bold leading-[1.06] tracking-[-0.03em]"
+    className="yap-hero-title yap-text-primary font-bold leading-[1.06] tracking-[-0.03em]"
     style={{ fontSize: 'clamp(2.7rem, 6.4vw, 4.75rem)' }}
   >
-    yapp your{' '}
+    <span className="yap-hero-title__line">yapp your</span>
     <span className="yap-hero-cycle" aria-hidden>
       <span className="yap-hero-cycle__track">
         {HERO_CYCLE_WORDS.map((word) => (
@@ -112,6 +113,44 @@ const HeroTitle: React.FC = () => (
       </span>
     </span>
   </h1>
+);
+
+const XSocialIcon: React.FC<{ size?: number; className?: string }> = ({
+  size = 18,
+  className,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    aria-hidden
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const SocialLinksRow: React.FC<{ align?: 'center' | 'start' }> = ({ align = 'center' }) => (
+  <div
+    className={clsx(
+      'yap-social-links',
+      align === 'start' ? 'justify-start' : 'justify-center',
+    )}
+  >
+    {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+      <a
+        key={label}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={label}
+        className="yap-social-link"
+      >
+        <Icon size={18} aria-hidden />
+      </a>
+    ))}
+  </div>
 );
 
 const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }> = ({
@@ -254,6 +293,8 @@ export const LandingPage: React.FC = () => {
               A voice-first AI workflow that turns spoken thoughts and files into
               clean, usable output powered by your own Gemini API key.
             </p>
+
+            <SocialLinksRow />
 
             <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row">
               <Link
@@ -665,6 +706,7 @@ export const LandingPage: React.FC = () => {
                   Bring your own key. Keep control.
                   A voice-first AI workflow without another subscription.
                 </p>
+                <SocialLinksRow align="start" />
               </div>
               {/* Navigation */}
               <div className="flex flex-col gap-3">
@@ -914,4 +956,9 @@ const SUBSTACK_LINKS = [
     label: 'Getting started',
     href: 'https://substack.com/@tmshahz/note/p-201844633?utm_source=notes-share-action&utm_medium=web',
   },
+];
+
+const SOCIAL_LINKS: Array<{ label: string; href: string; Icon: IconType }> = [
+  { label: 'X (Twitter)', href: 'https://x.com/yappify_ai', Icon: XSocialIcon },
+  { label: 'GitHub', href: 'https://github.com/tmshahz/yappify-ai-2.0', Icon: Github },
 ];
