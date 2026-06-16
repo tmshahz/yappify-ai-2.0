@@ -1169,3 +1169,453 @@ body {
     transform: none;
   }
 }
+
+/* ============================================================
+   TRANSFORMATION DEMO SECTION
+   Two glass cards (input / output) flanking a connector.
+   --input is neutral; --output is violet-tinted.
+   ============================================================ */
+
+.yap-demo-card {
+  background: var(--yap-light-glass);
+  border: 1px solid var(--yap-light-border);
+  box-shadow:
+    0 10px 28px rgba(46, 30, 95, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.66) inset;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition:
+    border-color var(--yap-duration-md) var(--yap-ease),
+    box-shadow var(--yap-duration-md) var(--yap-ease);
+}
+
+.dark .yap-demo-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 14px 42px rgba(0, 0, 0, 0.20),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.yap-demo-card--output {
+  background: rgba(124, 92, 252, 0.055);
+  border-color: rgba(124, 92, 252, 0.18);
+  box-shadow:
+    0 10px 28px rgba(124, 92, 252, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.68) inset;
+}
+
+.dark .yap-demo-card--output {
+  background: rgba(124, 92, 252, 0.10);
+  border-color: rgba(124, 92, 252, 0.24);
+  box-shadow:
+    0 14px 42px rgba(124, 92, 252, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ============================================================
+   BYOK VISUAL FLOW
+   Frosted container wrapping the 3-step key → layer → output
+   flow. Slightly more prominent than a plain glass-card.
+   ============================================================ */
+
+.yap-byok-flow {
+  background: var(--yap-light-glass);
+  border: 1px solid var(--yap-light-border);
+  box-shadow:
+    0 16px 48px rgba(46, 30, 95, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.dark .yap-byok-flow {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ============================================================
+   HERO PILLS
+   Floating informational pills. Visible md→xl; hidden on mobile
+   and xl+ (where device mockups appear instead).
+   Each has a unique position class (yap-pill-pos-1…4) and a
+   staggered animation delay set via inline style.
+   ============================================================ */
+
+.yap-hero-pill {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  /* Light mode */
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(124, 92, 252, 0.14);
+  color: #625B73;
+  box-shadow:
+    0 4px 16px rgba(46, 30, 95, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.88) inset;
+}
+
+.dark .yap-hero-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(124, 92, 252, 0.18);
+  color: var(--yap-text-2);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.20),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* Positions — approximate the reference layout */
+.yap-pill-pos-1 { top: 22%; left: 4%; }
+.yap-pill-pos-2 { top: 68%; left: 6%; }
+.yap-pill-pos-3 { top: 18%; right: 4%; }
+.yap-pill-pos-4 { top: 72%; right: 5%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-hero-pill {
+    animation: yap-pill-float 5.5s var(--yap-ease) infinite both;
+  }
+
+  .yap-pill-pos-2 { animation-duration: 6.8s; animation-delay: 0.55s; }
+  .yap-pill-pos-3 { animation-duration: 6.2s; animation-delay: 1.1s;  }
+  .yap-pill-pos-4 { animation-duration: 7.4s; animation-delay: 1.65s; }
+}
+
+@keyframes yap-pill-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+
+/* ============================================================
+   DEMO STAGES
+   Three cards in the "Watch a thought become usable" section.
+   The base .yap-demo-stage is light-themed; .yap-demo-stage--inverted
+   flips to a dark surface in light mode and a light surface in dark
+   mode (contrast highlight effect).
+   ============================================================ */
+
+.yap-demo-stage {
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(124, 92, 252, 0.10);
+  box-shadow:
+    0 8px 28px rgba(46, 30, 95, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.80) inset;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: box-shadow var(--yap-duration-md) var(--yap-ease);
+}
+
+.dark .yap-demo-stage {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+/* Stage 3: dark surface in light mode, light surface in dark mode */
+.yap-demo-stage--inverted {
+  background: #1A1726;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.dark .yap-demo-stage--inverted {
+  background: rgba(244, 241, 255, 0.92);
+  border: 1px solid rgba(124, 92, 252, 0.14);
+  box-shadow:
+    0 12px 36px rgba(46, 30, 95, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.90) inset;
+}
+
+/* Demo output text color — inverts with the card */
+.yap-demo-stage--inverted .yap-demo-output {
+  color: #C8C4DA; /* soft on dark */
+}
+
+.dark .yap-demo-stage--inverted .yap-demo-output {
+  color: #3D3552; /* soft on light */
+}
+
+/* ============================================================
+   MINI WAVEFORM (demo stage 1 active mic visual)
+   ============================================================ */
+
+.yap-mini-waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  width: 100%;
+  max-width: 180px;
+}
+
+.yap-mini-waveform__bar {
+  flex: 1;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    var(--yap-violet) 0%,
+    rgba(124, 92, 252, 0.20) 100%
+  );
+  transform-origin: center;
+  transform: scaleY(0.12);
+  opacity: 0.40;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-mini-waveform__bar {
+    animation: yap-mini-bar-pulse var(--bar-duration, 0.9s) ease-in-out infinite;
+    animation-delay: var(--bar-delay, 0s);
+  }
+}
+
+@keyframes yap-mini-bar-pulse {
+  0%, 100% { transform: scaleY(0.12); opacity: 0.35; }
+  50%       { transform: scaleY(var(--bar-peak, 0.7)); opacity: 0.85; }
+}
+
+/* ============================================================
+   RECORDING DOT (blinking red dot in demo stage 1)
+   ============================================================ */
+
+.yap-demo-record-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-demo-record-dot {
+    animation: yap-record-blink 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes yap-record-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+/* ============================================================
+   PROCESSING DOTS (bouncing dots in demo stage 2)
+   ============================================================ */
+
+.yap-processing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--yap-violet);
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-processing-dot {
+    animation: yap-dot-bounce 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes yap-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+  40%            { transform: translateY(-5px); opacity: 0.90; }
+}
+
+/* ============================================================
+   PROGRESS BAR (demo stage 2)
+   ============================================================ */
+
+.yap-demo-progress {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(124, 92, 252, 0.10) 0%,
+    rgba(124, 92, 252, 0.10) 100%
+  );
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.yap-demo-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--yap-violet) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .yap-demo-progress::after {
+    animation: yap-progress-shimmer 1.6s linear infinite;
+  }
+}
+
+@keyframes yap-progress-shimmer {
+  from { background-position: 200% center; }
+  to   { background-position: -200% center; }
+}
+
+/* ============================================================
+   COPY BUTTON IN DEMO STAGE 3
+   Light-on-dark in light mode, dark-on-light in dark mode
+   ============================================================ */
+
+.yap-demo-copy-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(240, 237, 248, 0.80);
+  cursor: pointer;
+  transition:
+    background var(--yap-duration-sm) var(--yap-ease),
+    color var(--yap-duration-sm) var(--yap-ease);
+}
+
+.yap-demo-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #F0EDF8;
+}
+
+.dark .yap-demo-copy-btn {
+  background: rgba(32, 26, 46, 0.08);
+  border: 1px solid rgba(32, 26, 46, 0.16);
+  color: rgba(32, 26, 46, 0.65);
+}
+
+.dark .yap-demo-copy-btn:hover {
+  background: rgba(32, 26, 46, 0.14);
+  color: #201A2E;
+}
+
+/* ============================================================
+   STEP NUMBER CIRCLES (three-steps section)
+   Larger, dimensional, softly glowing numbered circles.
+   ============================================================ */
+
+.yap-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+
+  /* Light mode */
+  background: linear-gradient(135deg, #9B7FFD 0%, var(--yap-violet) 100%);
+  color: #fff;
+  box-shadow:
+    0 6px 20px rgba(124, 92, 252, 0.38),
+    0 2px 6px rgba(124, 92, 252, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.30) inset;
+}
+
+.dark .yap-step-number {
+  box-shadow:
+    0 6px 24px rgba(124, 92, 252, 0.50),
+    0 0 40px rgba(124, 92, 252, 0.20),
+    0 1px 0 rgba(255, 255, 255, 0.14) inset;
+}
+
+/* ============================================================
+   INTERACTIVE MODE TABS (modes section)
+   ============================================================ */
+
+.yap-mode-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.yap-mode-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.yap-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--yap-duration-sm) var(--yap-ease),
+    border-color var(--yap-duration-sm) var(--yap-ease),
+    color var(--yap-duration-sm) var(--yap-ease),
+    box-shadow var(--yap-duration-sm) var(--yap-ease);
+
+  /* Light mode default */
+  background: rgba(255, 255, 255, 0.60);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #625B73;
+  box-shadow: 0 2px 6px rgba(46, 30, 95, 0.06);
+}
+
+.dark .yap-mode-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--yap-text-2);
+  box-shadow: none;
+}
+
+.yap-mode-tab.is-active {
+  background: rgba(124, 92, 252, 0.10);
+  border-color: rgba(124, 92, 252, 0.28);
+  color: var(--yap-violet);
+  box-shadow: 0 2px 8px rgba(124, 92, 252, 0.16);
+}
+
+.dark .yap-mode-tab.is-active {
+  background: rgba(124, 92, 252, 0.14);
+  border-color: rgba(124, 92, 252, 0.34);
+  color: var(--yap-violet-hover);
+  box-shadow: 0 2px 12px rgba(124, 92, 252, 0.24);
+}
+
+.yap-mode-tab:hover:not(.is-active) {
+  background: rgba(124, 92, 252, 0.05);
+  border-color: rgba(124, 92, 252, 0.16);
+  color: var(--yap-violet);
+}
+
+/* Content fade when switching tabs */
+.yap-tab-enter {
+  animation: yap-tab-fade-in var(--yap-duration-md) var(--yap-ease) both;
+}
+
+@keyframes yap-tab-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}

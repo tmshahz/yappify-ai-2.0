@@ -1,14 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
+  CheckCircle,
   ChevronDown,
   ClipboardList,
+  Cloud,
+  Copy,
   ExternalLink,
   FileAudio,
   Key,
   Languages,
   Lock,
+  Mic,
   Moon,
   Server,
   Sliders,
@@ -21,10 +25,21 @@ import {
 import clsx from 'clsx';
 import { useSettings } from '../hooks/useSettings';
 
-type IconType = React.ComponentType<{ size?: number }>;
+type IconType = React.ComponentType<{ size?: number; className?: string }>;
 
-// Bar data computed once at module level. Peak height, duration, and delay vary
-// per bar to produce a natural voice-waveform envelope (tallest in the center).
+// ─── Module-level constants ───────────────────────────────────────────────────
+
+// Demo output text (copied when user clicks "Copy Result" in the demo)
+const DEMO_OUTPUT = `Q3 Review and Launch Post-Mortem
+
+Presentation outline:
+1. Q3 results: key metrics and performance
+2. Launch retrospective: what went wrong and why
+3. Strategic rationale: why our approach remains sound
+4. Team update: framed as focused execution
+5. Next steps and confidence indicators`;
+
+// Hero waveform bar data — envelope tallest in the center.
 const WAVEFORM_BARS = Array.from({ length: 28 }, (_, i) => {
   const t = i / 27;
   const envelope = Math.sin(t * Math.PI);
@@ -35,8 +50,19 @@ const WAVEFORM_BARS = Array.from({ length: 28 }, (_, i) => {
   return { peak: peak.toFixed(2), delay, duration };
 });
 
-// Decorative waveform that animates without audio input via CSS custom properties.
-// Replaces the existing Waveform canvas component which requires a real stream.
+// Smaller waveform used in the demo stage 1 (active mic/recording visual).
+const MINI_BARS = Array.from({ length: 14 }, (_, i) => {
+  const t = i / 13;
+  const envelope = Math.sin(t * Math.PI);
+  const jitter = 0.25 + Math.abs(Math.sin(i * 2.1)) * 0.65;
+  const peak = Math.max(0.15, Math.min(1, envelope * 0.55 + jitter * 0.5));
+  const delay = (i * 0.065 % 0.85).toFixed(2);
+  const duration = (0.7 + Math.abs(Math.sin(i * 0.55)) * 0.8).toFixed(2);
+  return { peak: peak.toFixed(2), delay, duration };
+});
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
 const LandingWaveform: React.FC = () => (
   <div className="yap-landing-waveform" aria-hidden>
     {WAVEFORM_BARS.map((bar, i) => (
@@ -53,10 +79,24 @@ const LandingWaveform: React.FC = () => (
   </div>
 );
 
+const MiniWaveform: React.FC = () => (
+  <div className="yap-mini-waveform" aria-hidden>
+    {MINI_BARS.map((bar, i) => (
+      <div
+        key={i}
+        className="yap-mini-waveform__bar"
+        style={{
+          '--bar-peak': bar.peak,
+          '--bar-duration': `${bar.duration}s`,
+          '--bar-delay': `${bar.delay}s`,
+        } as React.CSSProperties}
+      />
+    ))}
+  </div>
+);
+
 const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }> = ({
-  eyebrow,
-  title,
-  sub,
+  eyebrow, title, sub,
 }) => (
   <div className="yap-reveal mb-12 text-center">
     <h3 className="mb-3 text-xs font-bold uppercase tracking-wider yap-text-secondary">
@@ -76,12 +116,22 @@ const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }>
   </div>
 );
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export const LandingPage: React.FC = () => {
   const { settings, setSettings } = useSettings();
   const isDark = settings.theme === 'dark';
+  const [activeMode, setActiveMode] = useState(0);
+  const [demoCopied, setDemoCopied] = useState(false);
 
   const toggleTheme = () => {
     setSettings(prev => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
+  };
+
+  const handleDemoCopy = () => {
+    try { navigator.clipboard.writeText(DEMO_OUTPUT); } catch {}
+    setDemoCopied(true);
+    setTimeout(() => setDemoCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -90,8 +140,7 @@ export const LandingPage: React.FC = () => {
     return () => { document.title = prev; };
   }, []);
 
-  // Reveal-on-scroll — elements visible by default; adds entrance only when
-  // motion is permitted (see .yap-reveal in global.css).
+  // Reveal-on-scroll. Visible by default so reduced-motion / no-JS is safe.
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const nodes = Array.from(document.querySelectorAll('.yap-reveal'));
@@ -149,9 +198,23 @@ export const LandingPage: React.FC = () => {
 
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section className="relative flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-10">
-          {/* Desktop device mockups — xl+ only, absolutely positioned beside the hero copy */}
-          <div className="yap-soft-in pointer-events-none absolute left-[1%] top-1/2 hidden -translate-y-1/2 xl:block 2xl:left-[4%]">
-            <div className="yap-device yap-device--left pointer-events-auto w-[300px] 2xl:w-[400px]">
+
+          {/* Floating informational pills — md to lg only (xl shows device mockups instead) */}
+          <div className="pointer-events-none absolute inset-0 hidden md:block xl:hidden" aria-hidden>
+            {HERO_PILLS.map((pill, i) => (
+              <div
+                key={i}
+                className={clsx('yap-hero-pill', pill.posClass)}
+                style={{ animationDelay: pill.delay }}
+              >
+                {pill.text}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop device mockups — xl+ only */}
+          <div className="yap-soft-in pointer-events-none absolute left-0 top-1/2 hidden -translate-y-1/2 xl:block 2xl:left-[3%]">
+            <div className="yap-device yap-device--left pointer-events-auto w-[340px] 2xl:w-[420px]">
               <img
                 src="/hero-dark.png"
                 alt="yappify-ai workspace in dark mode"
@@ -159,8 +222,8 @@ export const LandingPage: React.FC = () => {
               />
             </div>
           </div>
-          <div className="yap-soft-in pointer-events-none absolute right-[1%] top-1/2 hidden -translate-y-1/2 xl:block 2xl:right-[4%]">
-            <div className="yap-device yap-device--right pointer-events-auto w-[300px] 2xl:w-[400px]">
+          <div className="yap-soft-in pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 xl:block 2xl:right-[3%]">
+            <div className="yap-device yap-device--right pointer-events-auto w-[340px] 2xl:w-[420px]">
               <img
                 src="/hero-light.png"
                 alt="yappify-ai workspace in light mode"
@@ -188,7 +251,7 @@ export const LandingPage: React.FC = () => {
 
             <p className="yap-text-secondary max-w-xl text-lg leading-relaxed">
               A voice-first AI workflow that turns spoken thoughts and files into
-              clean, usable output that's powered by your own Gemini API key.
+              clean, usable output powered by your own Gemini API key.
             </p>
 
             <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row">
@@ -212,13 +275,99 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile screenshot — theme-aware, below hero copy, hidden on xl+ where side mockups appear */}
+          {/* Mobile screenshot — theme-aware, hidden on xl+ */}
           <div className="mt-12 w-full max-w-sm xl:hidden">
             <img
               src={isDark ? '/hero-dark.png' : '/hero-light.png'}
               alt="yappify-ai workspace"
               className="yap-device__img mx-auto"
             />
+          </div>
+        </section>
+
+        {/* ── Watch a thought become usable ────────────────────────────────── */}
+        <section className="px-6 py-24 sm:py-32">
+          <div className="mx-auto max-w-5xl">
+            <SectionHeading
+              eyebrow="In action"
+              title="Watch a thought become usable."
+              sub="Speak messy, get something polished. The whole workflow in one step."
+            />
+
+            <div className="yap-reveal grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+
+              {/* Stage 1: Raw input */}
+              <div className="yap-demo-stage rounded-2xl p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="yap-demo-record-dot" aria-hidden />
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider yap-text-secondary">
+                    Voice input active
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed yap-text-secondary italic">
+                  "ok so the presentation needs to cover Q3 results and also the
+                  launch issues but like, we still believe in the direction, and
+                  maybe mention the team thing but not in a way that sounds bad..."
+                </p>
+                <div className="mt-5">
+                  <MiniWaveform />
+                </div>
+              </div>
+
+              {/* Stage 2: Processing */}
+              <div className="yap-demo-stage rounded-2xl p-5">
+                <div className="mb-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(124,92,252,0.22)] bg-[rgba(124,92,252,0.07)] px-3 py-1 text-[11px] font-semibold text-[var(--yap-violet)]">
+                    <Sparkles size={11} aria-hidden />
+                    Prompt Enhancer
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex gap-1.5">
+                    {[0, 1, 2].map(i => (
+                      <div
+                        key={i}
+                        className="yap-processing-dot"
+                        style={{ animationDelay: `${i * 0.18}s` }}
+                        aria-hidden
+                      />
+                    ))}
+                  </div>
+                  <span className="font-mono text-xs yap-text-secondary">Processing...</span>
+                </div>
+                <div className="yap-demo-progress rounded-full" aria-hidden />
+                <p className="mt-4 text-xs leading-relaxed yap-text-secondary opacity-60">
+                  Analyzing structure and intent. Removing filler. Organizing
+                  into clear output...
+                </p>
+              </div>
+
+              {/* Stage 3: Output (inverted — dark in light mode, light in dark mode) */}
+              <div className="yap-demo-stage yap-demo-stage--inverted rounded-2xl p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-500">
+                    <CheckCircle size={13} aria-hidden />
+                    Ready
+                  </div>
+                  <button
+                    onClick={handleDemoCopy}
+                    className="yap-demo-copy-btn flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
+                  >
+                    {demoCopied
+                      ? <><CheckCircle size={11} aria-hidden />Copied</>
+                      : <><Copy size={11} aria-hidden />Copy Result</>
+                    }
+                  </button>
+                </div>
+                <div
+                  className="yap-demo-output text-xs leading-relaxed font-mono whitespace-pre-wrap"
+                  style={{ opacity: 0.9 }}
+                >
+                  {DEMO_OUTPUT}
+                </div>
+              </div>
+
+            </div>
           </div>
         </section>
 
@@ -233,8 +382,8 @@ export const LandingPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               {STEPS.map((step, i) => (
                 <div key={step.n} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
-                  <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-4 rounded-2xl p-6">
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--yap-violet)] text-sm font-bold text-white">
+                  <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-5 rounded-2xl p-6">
+                    <span className="yap-step-number">
                       {step.n}
                     </span>
                     <p className="text-base font-semibold yap-text-primary">{step.title}</p>
@@ -246,7 +395,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Core features (mode-card pattern from the app) ───────────────── */}
+        {/* ── Core features ────────────────────────────────────────────────── */}
         <section className="px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
@@ -262,7 +411,8 @@ export const LandingPage: React.FC = () => {
                     <div
                       className={clsx(
                         'yap-glass-card yap-hover-lift yap-glow-in h-full rounded-xl border p-5 transition-all',
-                        'border-gray-200 bg-white hover:border-purple-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-700',
+                        'border-gray-200 bg-white hover:border-purple-300',
+                        'dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-700',
                       )}
                     >
                       <div className="flex items-start gap-3">
@@ -286,6 +436,69 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
+        {/* ── Modes built for real use (interactive tabs) ───────────────────── */}
+        <section className="px-6 py-24 sm:py-32">
+          <div className="mx-auto max-w-5xl">
+            <SectionHeading
+              eyebrow="Real use"
+              title="Modes built for real use."
+              sub="Click any mode to see how messy input becomes usable output."
+            />
+
+            {/* Tab bar */}
+            <div className="yap-reveal mb-6">
+              <div className="yap-mode-tabs flex gap-2 overflow-x-auto pb-2">
+                {MODE_TABS.map((tab, i) => {
+                  const TabIcon = tab.icon;
+                  return (
+                    <button
+                      key={tab.label}
+                      onClick={() => setActiveMode(i)}
+                      className={clsx('yap-mode-tab', activeMode === i && 'is-active')}
+                    >
+                      <TabIcon size={14} aria-hidden />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* From / to summary */}
+            <div className="yap-reveal mb-4 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium yap-text-secondary dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-2)]">
+                {MODE_TABS[activeMode].from}
+              </span>
+              <ArrowRight size={13} className="flex-shrink-0 text-[var(--yap-violet)] opacity-50" aria-hidden />
+              <span className="inline-flex items-center rounded-full border border-[rgba(124,92,252,0.2)] bg-[rgba(124,92,252,0.06)] px-3 py-1 text-xs font-medium text-[var(--yap-violet)]">
+                {MODE_TABS[activeMode].to}
+              </span>
+            </div>
+
+            {/* Tab content — key changes on tab switch, triggering the fade animation */}
+            <div key={activeMode} className="yap-reveal is-visible yap-tab-enter grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Input */}
+              <div className="yap-glass-card rounded-2xl p-5">
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-wider yap-text-hint">
+                  Input
+                </p>
+                <p className="text-sm leading-relaxed yap-text-secondary italic">
+                  {MODE_TABS[activeMode].inputExample}
+                </p>
+              </div>
+              {/* Output */}
+              <div className="yap-glass-card rounded-2xl p-5 border-[rgba(124,92,252,0.18)] bg-[rgba(124,92,252,0.04)] dark:bg-[var(--yap-violet-mist)]">
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--yap-violet)]">
+                  Output
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed yap-text-primary">
+                  {MODE_TABS[activeMode].outputExample}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── BYOK ─────────────────────────────────────────────────────────── */}
         <section className="px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
@@ -294,64 +507,60 @@ export const LandingPage: React.FC = () => {
               title="You bring the key. yappify-ai gives you the workflow."
               sub="yappify-ai is the interface, not the AI provider. You connect directly to your own account and stay in control."
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="yap-reveal">
-                <div className="yap-glass-card yap-hover-lift flex h-full flex-col gap-4 rounded-xl border border-purple-100 bg-purple-50 p-6 dark:border-[var(--yap-active-border)] dark:bg-[var(--yap-violet-mist)]">
-                  <div className="flex items-center gap-3">
-                    <div className="yap-icon-mist flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg">
-                      <Key size={18} />
-                    </div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider yap-text-primary">
-                      Your key, your control
-                    </h3>
-                  </div>
-                  <p className="text-sm leading-relaxed yap-text-secondary">
-                    Connect your own Google Gemini API key. No shared backend, no resold
-                    AI access. Your key is optionally saved in your browser, not on any
-                    server.
-                  </p>
-                </div>
-              </div>
-              <div className="yap-reveal" style={{ transitionDelay: '80ms' }}>
-                <div className="yap-glass-card yap-hover-lift flex h-full flex-col gap-4 rounded-xl border border-purple-100 bg-purple-50 p-6 dark:border-[var(--yap-active-border)] dark:bg-[var(--yap-violet-mist)]">
-                  <div className="flex items-center gap-3">
-                    <div className="yap-icon-mist flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg">
-                      <Sparkles size={18} />
-                    </div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider yap-text-primary">
-                      Free because we don't resell AI
-                    </h3>
-                  </div>
-                  <p className="text-sm leading-relaxed yap-text-secondary">
-                    Since you connect directly to your own account, we don't charge for
-                    model usage. Google Gemini offers free-tier API access. Many users
-                    can start without any cost.
-                  </p>
+
+            {/* Flow visualization: Your Key → yappify-ai → AI Provider */}
+            <div className="yap-reveal mb-10">
+              <div className="yap-byok-flow mx-auto max-w-2xl rounded-2xl p-6 sm:p-8">
+                <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-0">
+                  {BYOK_FLOW.map((step, i) => (
+                    <React.Fragment key={step.label}>
+                      <div className="flex flex-1 flex-col items-center gap-3 text-center">
+                        {step.isLogo ? (
+                          <img
+                            src="/yl.png"
+                            alt="yappify-ai"
+                            className="h-12 w-12 rounded-xl shadow-[0_8px_24px_rgba(124,92,252,0.32)]"
+                          />
+                        ) : (
+                          <div className="yap-icon-mist flex h-12 w-12 items-center justify-center rounded-xl">
+                            {step.icon && <step.icon size={22} />}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold yap-text-primary">{step.label}</p>
+                          <p className="mt-0.5 text-xs yap-text-secondary">{step.sub}</p>
+                        </div>
+                      </div>
+                      {i < BYOK_FLOW.length - 1 && (
+                        <div className="flex items-center justify-center self-center sm:px-4">
+                          <ArrowRight
+                            size={18}
+                            className="rotate-90 text-[var(--yap-violet)] opacity-40 sm:rotate-0"
+                            aria-hidden
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* ── Privacy & Trust ──────────────────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-5xl">
-            <SectionHeading
-              eyebrow="Privacy & trust"
-              title="Designed around your control."
-              sub="Honest by design. yappify-ai minimizes unnecessary server-side storage, without overclaiming what it can't promise."
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {TRUST.map((item, i) => {
-                const Icon = item.icon;
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {BYOK_CARDS.map((card, i) => {
+                const CardIcon = card.icon;
                 return (
-                  <div key={item.title} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
-                    <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-3 rounded-xl p-6">
-                      <div className="yap-icon-mist flex h-9 w-9 items-center justify-center rounded-lg">
-                        <Icon size={18} />
+                  <div key={card.title} className="yap-reveal" style={{ transitionDelay: `${i * 80}ms` }}>
+                    <div className="yap-glass-card yap-hover-lift flex h-full flex-col gap-4 rounded-xl border border-purple-100 bg-purple-50 p-6 dark:border-[var(--yap-active-border)] dark:bg-[var(--yap-violet-mist)]">
+                      <div className="flex items-center gap-3">
+                        <div className="yap-icon-mist flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg">
+                          <CardIcon size={18} />
+                        </div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider yap-text-primary">
+                          {card.title}
+                        </h3>
                       </div>
-                      <p className="text-sm font-semibold yap-text-primary">{item.title}</p>
-                      <p className="text-sm leading-relaxed yap-text-secondary">{item.body}</p>
+                      <p className="text-sm leading-relaxed yap-text-secondary">{card.body}</p>
                     </div>
                   </div>
                 );
@@ -360,24 +569,29 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Practical use cases ──────────────────────────────────────────── */}
+        {/* ── Privacy & Trust ──────────────────────────────────────────────── */}
         <section className="px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
-              eyebrow="In practice"
-              title="From messy input to usable output."
-              sub="yappify-ai lives in the messy middle. The voice note before the email, the ramble before the notes."
+              eyebrow="Privacy and trust"
+              title="Designed around your control."
+              sub="Honest by design. yappify-ai minimizes unnecessary server-side storage, without overclaiming what it cannot promise."
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {USE_CASES.map((uc, i) => (
-                <div key={uc.from} className="yap-reveal" style={{ transitionDelay: `${(i % 3) * 60}ms` }}>
-                  <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full items-center gap-3 rounded-xl p-5">
-                    <span className="text-sm font-medium yap-text-secondary">{uc.from}</span>
-                    <ArrowRight size={16} className="flex-shrink-0 text-[var(--yap-violet)]" aria-hidden />
-                    <span className="text-sm font-semibold yap-text-primary">{uc.to}</span>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {TRUST.map((item, i) => {
+                const TrustIcon = item.icon;
+                return (
+                  <div key={item.title} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
+                    <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-3 rounded-xl p-6">
+                      <div className="yap-icon-mist flex h-9 w-9 items-center justify-center rounded-lg">
+                        <TrustIcon size={18} />
+                      </div>
+                      <p className="text-sm font-semibold yap-text-primary">{item.title}</p>
+                      <p className="text-sm leading-relaxed yap-text-secondary">{item.body}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -390,7 +604,7 @@ export const LandingPage: React.FC = () => {
               {FAQS.map((faq, i) => (
                 <div key={faq.q} className="yap-reveal" style={{ transitionDelay: `${i * 50}ms` }}>
                   <details className="yap-faq yap-glass-card rounded-xl p-5">
-                    <summary className="flex items-center justify-between gap-4">
+                    <summary className="flex cursor-pointer items-center justify-between gap-4">
                       <span className="text-sm font-semibold yap-text-primary sm:text-base">
                         {faq.q}
                       </span>
@@ -436,24 +650,65 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <footer className="border-t border-gray-100 px-6 py-10 dark:border-[var(--yap-glass-border)]">
-          <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex items-center gap-2.5">
-              <img src="/yl.png" alt="yappify-ai" className="h-6 w-6 rounded-md" />
-              <p className="max-w-md text-center text-xs leading-relaxed yap-text-secondary sm:text-left">
-                yappify-ai processes your audio through your own Gemini API key. Data
-                handling is subject to Google's privacy policy.
+        <footer className="border-t border-gray-100 px-6 pt-12 pb-8 dark:border-[var(--yap-glass-border)]">
+          <div className="mx-auto max-w-5xl">
+            {/* Top row */}
+            <div className="mb-10 grid grid-cols-1 gap-10 sm:grid-cols-3">
+              {/* Brand */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5">
+                  <img src="/yl.png" alt="yappify-ai" className="h-7 w-7 rounded-lg shadow-[0_4px_12px_rgba(124,92,252,0.24)]" />
+                  <span className="text-base font-bold tracking-tight yap-text-primary">yappify-ai</span>
+                </div>
+                <p className="text-sm leading-relaxed yap-text-secondary max-w-[240px]">
+                  Bring your own key. Keep control.
+                  A voice-first AI workflow without another subscription.
+                </p>
+              </div>
+              {/* Navigation */}
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-bold uppercase tracking-wider yap-text-hint">Navigate</p>
+                <nav className="flex flex-col gap-2.5">
+                  {FOOTER_LINKS.map(link => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      className="text-sm yap-text-secondary transition-colors hover:text-purple-600 dark:hover:text-[var(--yap-violet-hover)] w-fit"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </nav>
+              </div>
+              {/* Developer */}
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-bold uppercase tracking-wider yap-text-hint">About</p>
+                <a
+                  href="https://www.tmshahz.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="yap-hover-lift inline-flex w-fit items-center gap-2 text-sm font-semibold yap-text-secondary transition-colors hover:text-purple-600 dark:hover:text-[var(--yap-violet-hover)]"
+                >
+                  <ExternalLink size={14} aria-hidden />
+                  About the developer
+                </a>
+                <Link
+                  to="/app"
+                  className="yap-violet-button inline-flex w-fit items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+                >
+                  Open Workspace
+                  <ArrowRight size={14} aria-hidden />
+                </Link>
+              </div>
+            </div>
+            {/* Bottom bar */}
+            <div className="border-t border-gray-100 pt-6 dark:border-[var(--yap-glass-border)]">
+              <p className="text-xs leading-relaxed yap-text-hint text-center sm:text-left">
+                yappify-ai processes your audio through your own Gemini API key.
+                Data handling is subject to Google's privacy policy.
+                yappify-ai does not store your key on any server.
               </p>
             </div>
-            <a
-              href="https://www.tmshahz.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="yap-hover-lift flex flex-shrink-0 items-center gap-2 text-sm font-semibold yap-text-secondary transition-colors hover:text-purple-600 dark:hover:text-[var(--yap-violet-hover)]"
-            >
-              <ExternalLink size={14} />
-              About Developer
-            </a>
           </div>
         </footer>
 
@@ -461,6 +716,15 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
+
+// ─── Data ────────────────────────────────────────────────────────────────────
+
+const HERO_PILLS = [
+  { text: 'Voice dump to clean notes', posClass: 'yap-pill-pos-1', delay: '0s' },
+  { text: 'Voice-first. Powered by your own key.', posClass: 'yap-pill-pos-2', delay: '0.55s' },
+  { text: 'Messy ideas to structured prompt', posClass: 'yap-pill-pos-3', delay: '1.1s' },
+  { text: 'No account. No subscription.', posClass: 'yap-pill-pos-4', delay: '1.65s' },
+];
 
 const STEPS = [
   {
@@ -481,14 +745,100 @@ const STEPS = [
 ];
 
 const FEATURES: Array<{ icon: IconType; title: string; desc: string }> = [
-  { icon: Sparkles, title: 'Prompt Enhancer', desc: 'Clean up speech, remove filler, and keep your intent as a stronger prompt.' },
-  { icon: Zap, title: 'Quick Notes', desc: 'Turn a transcript into concise, high-density notes.' },
-  { icon: Sliders, title: 'Custom Modes', desc: 'Tune yappify-ai for your own repeated workflows.' },
-  { icon: Upload, title: 'Upload Files', desc: 'Process audio files into exactly the output you need.' },
-  { icon: FileAudio, title: 'Raw Transcription', desc: 'Generate a clean transcript, nothing else.' },
-  { icon: ClipboardList, title: 'Media Summary', desc: 'A structured summary with decisions and themes.' },
-  { icon: Users, title: 'Speaker Recognition', desc: 'Transcript with speaker separation where possible.' },
-  { icon: Languages, title: 'Translation', desc: 'Speak it, translate it, send it. Transliteration supported.' },
+  { icon: Sparkles,     title: 'Prompt Enhancer',      desc: 'Clean up speech, remove filler, and keep your intent as a stronger prompt.' },
+  { icon: Zap,          title: 'Quick Notes',           desc: 'Turn a transcript into concise, high-density notes.' },
+  { icon: Sliders,      title: 'Custom Modes',          desc: 'Tune yappify-ai for your own repeated workflows.' },
+  { icon: Upload,       title: 'Upload Files',          desc: 'Process audio files into exactly the output you need.' },
+  { icon: FileAudio,    title: 'Raw Transcription',     desc: 'Generate a clean transcript, nothing else.' },
+  { icon: ClipboardList, title: 'Media Summary',        desc: 'A structured summary with decisions and themes.' },
+  { icon: Users,        title: 'Speaker Recognition',   desc: 'Transcript with speaker separation where possible.' },
+  { icon: Languages,    title: 'Translation',           desc: 'Speak it, translate it, send it. Transliteration supported.' },
+];
+
+interface ModeTab {
+  label: string;
+  icon: IconType;
+  from: string;
+  to: string;
+  inputExample: string;
+  outputExample: string;
+}
+
+const MODE_TABS: ModeTab[] = [
+  {
+    label: 'Voice notes',
+    icon: Mic,
+    from: 'Rough rambling recording',
+    to: 'Clean bullet notes',
+    inputExample: '"I need to write up what happened in the meeting today, we talked about the timeline and Sarah wants to push the launch date but Mark is worried about QA and we still need to hear back from legal about the contracts..."',
+    outputExample: 'Meeting summary: 24 June\n\n• Launch timeline under review\n• Sarah: push launch forward\n• Mark: QA blockers unresolved\n• Pending: legal review of contracts\n• Action: Follow up with legal by EOD',
+  },
+  {
+    label: 'Prompt building',
+    icon: Sparkles,
+    from: 'Rough idea',
+    to: 'Structured AI prompt',
+    inputExample: '"write me a prompt that helps me make product descriptions that sound premium but not over-hyped and still honest"',
+    outputExample: 'You are a product copywriter with a premium, honest voice. Write a product description for [PRODUCT]. Keep it under 80 words. Sound confident and clear, never exaggerated. Lead with the core benefit, then add supporting detail. Avoid buzzwords.',
+  },
+  {
+    label: 'Translation',
+    icon: Languages,
+    from: 'Source text or speech',
+    to: 'Translated message',
+    inputExample: '"Hello, I wanted to ask about the return policy for an order I placed last week. The item arrived damaged and I would like a replacement or refund."',
+    outputExample: 'Spanish:\n"Hola, queria preguntar sobre la politica de devoluciones de un pedido que realize la semana pasada. El articulo llego danado y me gustaria un reemplazo o reembolso."',
+  },
+  {
+    label: 'File processing',
+    icon: Upload,
+    from: 'Uploaded audio or file',
+    to: 'Summary and action items',
+    inputExample: '[40-minute strategy call recording, 3 speakers, uploaded as MP3]',
+    outputExample: 'Key decisions:\n• Quarterly review cycle adopted\n• Two-market pilot approved (UK, Canada)\n• Q3 hiring target: 4 new roles\n\nAction items:\n• Book UK kick-off call (Maya, by July 8)\n• Draft pilot brief (Ravi, by July 5)\n• Share resource plan with board (Marcus)',
+  },
+  {
+    label: 'Speaking prep',
+    icon: Users,
+    from: 'Rough topic notes',
+    to: 'Speaking guide',
+    inputExample: '"I have a board pitch next week about our new internal onboarding tool. I want to cover why we built it, what problem it solves, what it does, and what we need from the board."',
+    outputExample: 'Board pitch structure\n\n1. Hook (30s): "Onboarding was taking 3x longer than target"\n2. What we built (60s): One clear demo flow\n3. Impact so far (30s): Key early metrics\n4. Ask (30s): Budget approval for 2 engineers and Q4 rollout',
+  },
+  {
+    label: 'Custom workflows',
+    icon: Sliders,
+    from: 'Your custom instruction',
+    to: 'Consistent output every time',
+    inputExample: '[Custom mode: Rewrite my draft to sound professional and warm. Remove filler. Keep the key ask clear and direct. No corporate speak.]',
+    outputExample: 'Hi [Name], I hope you are well. Following up on the proposal from last week. Would you be open to a 20-minute call to discuss next steps? I am available Thursday or Friday afternoon. Looking forward to it.',
+  },
+];
+
+interface ByokFlowStep {
+  label: string;
+  sub: string;
+  icon?: IconType;
+  isLogo?: boolean;
+}
+
+const BYOK_FLOW: ByokFlowStep[] = [
+  { label: 'Your API Key',     sub: 'From Google AI Studio',      icon: Key   },
+  { label: 'yappify-ai',       sub: 'Workflow and interface',      isLogo: true },
+  { label: 'AI Provider',      sub: 'Google Gemini',               icon: Cloud },
+];
+
+const BYOK_CARDS: Array<{ icon: IconType; title: string; body: string }> = [
+  {
+    icon: Key,
+    title: 'Your key, your control',
+    body: 'Connect your own Google Gemini API key. No shared backend, no resold AI access. Your key is optionally saved in your browser, not on any server.',
+  },
+  {
+    icon: Sparkles,
+    title: "Free because we don't resell AI",
+    body: "Since you connect directly to your own account, we don't charge for model usage. Google Gemini offers free-tier API access. Many users can start without any cost.",
+  },
 ];
 
 const TRUST: Array<{ icon: IconType; title: string; body: string }> = [
@@ -507,15 +857,6 @@ const TRUST: Array<{ icon: IconType; title: string; body: string }> = [
     title: 'Honest about the provider',
     body: "Requests are sent to Google Gemini to be processed. Data handling is subject to Google's privacy policy. yappify-ai minimizes unnecessary server-side storage.",
   },
-];
-
-const USE_CASES = [
-  { from: 'Rough voice note', to: 'Polished email' },
-  { from: 'Messy idea', to: 'Structured prompt' },
-  { from: 'Voice dump', to: 'Clean quick notes' },
-  { from: 'Uploaded file', to: 'Speaking notes' },
-  { from: 'Long recording', to: 'Media summary' },
-  { from: 'Any language', to: 'Translated message' },
 ];
 
 const FAQS = [
@@ -543,4 +884,12 @@ const FAQS = [
     q: 'What can I actually do with it?',
     a: 'Transcribe speech, enhance prompts, capture quick notes, translate, and process uploaded files into transcripts, summaries, speaker transcripts, or action items.',
   },
+];
+
+const FOOTER_LINKS = [
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Features',     href: '#features' },
+  { label: 'BYOK',         href: '#byok' },
+  { label: 'Privacy',      href: '#privacy' },
+  { label: 'FAQ',          href: '#faq' },
 ];
