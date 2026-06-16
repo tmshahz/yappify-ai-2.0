@@ -461,7 +461,7 @@ Used in `PromptifyPanel`, `HistoryPanel`. Pattern: `yap-glass-card` + `yap-glass
 
 ### 4. Output rendering (`OutputMarkdown.tsx`)
 
-Wraps `react-markdown` with `yap-output-prose`. Post-processing via `formatOutputMarkdown.ts` promotes labels to `##` headings. Plain monospace for Speech RAW via `shouldUsePlainRawOutput()`.
+Wraps `react-markdown` with `yap-output-prose`. Post-processing via `formatOutputMarkdown.ts` promotes labels to `##` headings when profile is `rich-markdown`. Display profiles (`plain-transcript`, `speaker-transcript`, `rich-markdown`) are resolved in `utils/outputDisplay.ts`.
 
 ### 5. Waveform (`Waveform.tsx`)
 

@@ -150,14 +150,11 @@
   font-size: 0.86rem;
 }
 
-.yap-output-prose--raw {
-  font-family: var(--yap-font-mono);
-  font-size: 0.9rem;
-  line-height: 1.65;
+.yap-output-prose--plain {
   white-space: pre-wrap;
 }
 
-.yap-output-prose--raw p {
-  margin: 0;
+.yap-output-prose--plain p {
+  margin: 0.8rem 0;
   white-space: pre-wrap;
 }

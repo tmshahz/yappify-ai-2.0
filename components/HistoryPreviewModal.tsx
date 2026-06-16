@@ -1,5 +1,6 @@
 import React from 'react';
 import { OutputMarkdown } from './OutputMarkdown';
+import { resolveHistoryDisplayProfile } from '../utils/outputDisplay';
 import { Clock } from 'lucide-react';
 import { HistoryItem } from '../types';
 import { Modal } from './Modal';
@@ -66,8 +67,15 @@ export const HistoryPreviewModal: React.FC<HistoryPreviewModalProps> = ({
 
         <section className="space-y-2">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Original Content</h3>
-          <div className="yap-glass-card rounded-xl border border-gray-200 dark:border-[var(--yap-glass-border)] bg-white dark:bg-[rgba(255,255,255,0.025)] p-4 max-h-52 overflow-y-auto custom-scrollbar text-sm whitespace-pre-wrap dark:text-[var(--yap-text-2)]">
-            {item.raw}
+          <div className="yap-glass-card rounded-xl border border-gray-200 dark:border-[var(--yap-glass-border)] bg-white dark:bg-[rgba(255,255,255,0.025)] p-4 max-h-52 overflow-y-auto custom-scrollbar">
+            <OutputMarkdown
+              content={item.raw}
+              displayProfile={resolveHistoryDisplayProfile({
+                appMode: item.appMode,
+                modeLabel: item.modeLabel,
+                section: 'raw',
+              })}
+            />
           </div>
         </section>
 
@@ -75,7 +83,14 @@ export const HistoryPreviewModal: React.FC<HistoryPreviewModalProps> = ({
           <section className="space-y-2">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">AI Output</h3>
             <div className="yap-glass-card rounded-xl border border-gray-200 dark:border-[var(--yap-glass-border)] bg-white dark:bg-[rgba(255,255,255,0.025)] p-4 max-h-72 overflow-y-auto custom-scrollbar">
-              <OutputMarkdown content={item.transformed} />
+              <OutputMarkdown
+                content={item.transformed}
+                displayProfile={resolveHistoryDisplayProfile({
+                  appMode: item.appMode,
+                  modeLabel: item.modeLabel,
+                  section: 'transformed',
+                })}
+              />
             </div>
           </section>
         )}

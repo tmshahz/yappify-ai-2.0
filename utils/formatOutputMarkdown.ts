@@ -38,6 +38,11 @@ const KNOWN_SECTIONS = new Set([
 
 const SPEAKER_LABEL = /^Speaker\s+([A-Z0-9]+)\s*:?\s*(.*)$/i;
 
+export interface FormatOutputMarkdownOptions {
+  promoteSections?: boolean;
+  promoteSpeakers?: boolean;
+}
+
 function normalizeLabel(label: string): string {
   return label.trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -61,8 +66,14 @@ function isLikelySectionTitle(label: string): boolean {
  * Promotes common AI section labels (e.g. "Translation:") to markdown headings
  * so ReactMarkdown can render visual hierarchy without changing Gemini prompts.
  */
-export function formatOutputMarkdown(text: string): string {
+export function formatOutputMarkdown(
+  text: string,
+  options: FormatOutputMarkdownOptions = {}
+): string {
   if (!text) return '';
+
+  const promoteSections = options.promoteSections ?? true;
+  const promoteSpeakers = options.promoteSpeakers ?? true;
 
   const lines = text.split('\n');
   const output: string[] = [];
@@ -81,41 +92,45 @@ export function formatOutputMarkdown(text: string): string {
       continue;
     }
 
-    const speakerMatch = trimmed.match(SPEAKER_LABEL);
-    if (speakerMatch) {
-      const speaker = `Speaker ${speakerMatch[1].toUpperCase()}`;
-      const rest = speakerMatch[2].trim();
-      output.push('');
-      output.push(`## ${speaker}`);
-      output.push('');
-      if (rest) output.push(rest);
-      continue;
-    }
-
-    const colonMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9\s/&()'-]{1,50}):\s*(.*)$/);
-    if (colonMatch) {
-      const title = colonMatch[1].trim();
-      const rest = colonMatch[2].trim();
-
-      if (isLikelySectionTitle(title)) {
+    if (promoteSpeakers) {
+      const speakerMatch = trimmed.match(SPEAKER_LABEL);
+      if (speakerMatch) {
+        const speaker = `Speaker ${speakerMatch[1].toUpperCase()}`;
+        const rest = speakerMatch[2].trim();
         output.push('');
-        output.push(`## ${title}`);
+        output.push(`## ${speaker}`);
         output.push('');
         if (rest) output.push(rest);
         continue;
       }
     }
 
-    if (isLikelySectionTitle(trimmed) && !trimmed.endsWith(':')) {
-      const nextLine = lines[index + 1]?.trim() ?? '';
-      const previousLine = lines[index - 1]?.trim() ?? '';
-      const startsSection = !previousLine || /^#{1,6}\s+/.test(previousLine);
+    if (promoteSections) {
+      const colonMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9\s/&()'-]{1,50}):\s*(.*)$/);
+      if (colonMatch) {
+        const title = colonMatch[1].trim();
+        const rest = colonMatch[2].trim();
 
-      if (startsSection && nextLine && !isLikelySectionTitle(nextLine) && !/^#{1,6}\s+/.test(nextLine)) {
-        output.push('');
-        output.push(`## ${trimmed}`);
-        output.push('');
-        continue;
+        if (isLikelySectionTitle(title)) {
+          output.push('');
+          output.push(`## ${title}`);
+          output.push('');
+          if (rest) output.push(rest);
+          continue;
+        }
+      }
+
+      if (isLikelySectionTitle(trimmed) && !trimmed.endsWith(':')) {
+        const nextLine = lines[index + 1]?.trim() ?? '';
+        const previousLine = lines[index - 1]?.trim() ?? '';
+        const startsSection = !previousLine || /^#{1,6}\s+/.test(previousLine);
+
+        if (startsSection && nextLine && !isLikelySectionTitle(nextLine) && !/^#{1,6}\s+/.test(nextLine)) {
+          output.push('');
+          output.push(`## ${trimmed}`);
+          output.push('');
+          continue;
+        }
       }
     }
 

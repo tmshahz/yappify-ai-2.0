@@ -604,10 +604,6 @@ body {
   transform: translateY(2px);
 }
 
-.dark .yap-mono-output {
-  font-family: var(--yap-font-mono);
-}
-
 .yap-modal-backdrop {
   background: rgba(248,245,255,0.64);
   backdrop-filter: blur(24px);

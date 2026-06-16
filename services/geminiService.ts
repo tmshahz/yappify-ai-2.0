@@ -187,7 +187,7 @@ export const transcribeAudio = async (
 ): Promise<{ text: string; usage: UsageResult }> => {
   return generateFromAudio(
     audioBlob,
-    "Transcribe this audio. Return ONLY the transcript. Do not add intro/outro text. If the audio is silent or unintelligible, return '[Unintelligible Audio]'.",
+    "Transcribe this audio. Return only the spoken words as plain text. Do not include timestamps, timecodes, subtitle formatting, speaker labels, markdown, headings, intro text, outro text, or commentary. If the audio is silent or unintelligible, return '[Unintelligible Audio]'.",
     apiKey,
     modelId
   );

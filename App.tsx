@@ -57,8 +57,8 @@ import { UploadPanel } from './components/UploadPanel';
 import { HistoryPreviewModal } from './components/HistoryPreviewModal';
 import { AnalyticsModal } from './components/AnalyticsModal';
 import { OutputMarkdown } from './components/OutputMarkdown';
+import { resolveWorkspaceDisplayProfile } from './utils/outputDisplay';
 import { CopyToast } from './components/CopyToast';
-import { shouldUsePlainRawOutput } from './utils/outputDisplay';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 class MarkdownErrorBoundary extends React.Component<
@@ -833,7 +833,11 @@ function App() {
                 <MarkdownErrorBoundary fallback={sanitizeText(currentDisplay)}>
                   <OutputMarkdown
                     content={sanitizeText(currentDisplay)}
-                    plainRaw={shouldUsePlainRawOutput(viewMode, prefs.activeMode)}
+                    displayProfile={resolveWorkspaceDisplayProfile({
+                      viewMode,
+                      activeMode: prefs.activeMode,
+                      uploadProcessingType: prefs.upload.processingType,
+                    })}
                   />
                 </MarkdownErrorBoundary>
               ) : (
