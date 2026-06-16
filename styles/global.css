@@ -12,6 +12,10 @@ body {
   overscroll-behavior: none;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 #root {
   width: 100%;
   height: 100%;
@@ -1009,6 +1013,15 @@ body {
   50% { transform: scaleY(var(--bar-peak, 0.6)); opacity: 0.88; }
 }
 
+@keyframes yap-hero-word-cycle {
+  0%, 16% { transform: translateY(0); }
+  20%, 36% { transform: translateY(-1.06em); }
+  40%, 56% { transform: translateY(-2.12em); }
+  60%, 76% { transform: translateY(-3.18em); }
+  80%, 96% { transform: translateY(-4.24em); }
+  100% { transform: translateY(0); }
+}
+
 /* Floating brand mark (public/yl.png) — float on wrapper, glow on image */
 .yap-landing-logo-wrap {
   display: inline-block;
@@ -1032,6 +1045,34 @@ body {
     0 32px 90px rgba(124, 92, 252, 0.50),
     0 0 60px rgba(124, 92, 252, 0.22),
     0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+
+/* Hero title — vertical word cycle (fixed width avoids layout shift) */
+.yap-hero-cycle {
+  display: inline-block;
+  vertical-align: bottom;
+  height: 1.06em;
+  min-width: 9.5ch;
+  overflow: hidden;
+  text-align: center;
+  color: var(--yap-violet);
+}
+
+.yap-hero-cycle__track {
+  display: flex;
+  flex-direction: column;
+}
+
+.yap-hero-cycle__word {
+  display: block;
+  height: 1.06em;
+  line-height: 1.06;
+  flex-shrink: 0;
+}
+
+/* Landing page anchor targets — offset for sticky nav */
+.yap-landing-anchor {
+  scroll-margin-top: 72px;
 }
 
 /* Floating device mockups (public/hero-*.png) — shadow/depth on the image itself, no card wrapper */
@@ -1156,6 +1197,10 @@ body {
     animation-delay: var(--bar-delay, 0s);
   }
 
+  .yap-hero-cycle__track {
+    animation: yap-hero-word-cycle 12s var(--yap-ease) infinite;
+  }
+
   .yap-reveal {
     opacity: 0;
     transform: translateY(20px);
@@ -1235,68 +1280,6 @@ body {
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.22),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
-}
-
-/* ============================================================
-   HERO PILLS
-   Floating informational pills. Visible md→xl; hidden on mobile
-   and xl+ (where device mockups appear instead).
-   Each has a unique position class (yap-pill-pos-1…4) and a
-   staggered animation delay set via inline style.
-   ============================================================ */
-
-.yap-hero-pill {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-
-  /* Light mode */
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(124, 92, 252, 0.14);
-  color: #625B73;
-  box-shadow:
-    0 4px 16px rgba(46, 30, 95, 0.10),
-    0 1px 0 rgba(255, 255, 255, 0.88) inset;
-}
-
-.dark .yap-hero-pill {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(124, 92, 252, 0.18);
-  color: var(--yap-text-2);
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.20),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
-}
-
-/* Positions — approximate the reference layout */
-.yap-pill-pos-1 { top: 22%; left: 4%; }
-.yap-pill-pos-2 { top: 68%; left: 6%; }
-.yap-pill-pos-3 { top: 18%; right: 4%; }
-.yap-pill-pos-4 { top: 72%; right: 5%; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .yap-hero-pill {
-    animation: yap-pill-float 5.5s var(--yap-ease) infinite both;
-  }
-
-  .yap-pill-pos-2 { animation-duration: 6.8s; animation-delay: 0.55s; }
-  .yap-pill-pos-3 { animation-duration: 6.2s; animation-delay: 1.1s;  }
-  .yap-pill-pos-4 { animation-duration: 7.4s; animation-delay: 1.65s; }
-}
-
-@keyframes yap-pill-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-7px); }
 }
 
 /* ============================================================

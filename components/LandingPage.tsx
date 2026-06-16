@@ -95,6 +95,25 @@ const MiniWaveform: React.FC = () => (
   </div>
 );
 
+const HERO_CYCLE_WORDS = ['thoughts', 'prompts', 'ideas', 'notes', 'workflows'] as const;
+
+const HeroTitle: React.FC = () => (
+  <h1
+    aria-label="yapp your thoughts"
+    className="yap-text-primary font-bold leading-[1.06] tracking-[-0.03em]"
+    style={{ fontSize: 'clamp(2.7rem, 6.4vw, 4.75rem)' }}
+  >
+    yapp your{' '}
+    <span className="yap-hero-cycle" aria-hidden>
+      <span className="yap-hero-cycle__track">
+        {HERO_CYCLE_WORDS.map((word) => (
+          <span key={word} className="yap-hero-cycle__word">{word}</span>
+        ))}
+      </span>
+    </span>
+  </h1>
+);
+
 const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }> = ({
   eyebrow, title, sub,
 }) => (
@@ -199,19 +218,6 @@ export const LandingPage: React.FC = () => {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section className="relative flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-10">
 
-          {/* Floating informational pills — md to lg only (xl shows device mockups instead) */}
-          <div className="pointer-events-none absolute inset-0 hidden md:block xl:hidden" aria-hidden>
-            {HERO_PILLS.map((pill, i) => (
-              <div
-                key={i}
-                className={clsx('yap-hero-pill', pill.posClass)}
-                style={{ animationDelay: pill.delay }}
-              >
-                {pill.text}
-              </div>
-            ))}
-          </div>
-
           {/* Desktop device mockups — xl+ only */}
           <div className="yap-soft-in pointer-events-none absolute left-0 top-1/2 hidden -translate-y-1/2 xl:block 2xl:left-[3%]">
             <div className="yap-device yap-device--left pointer-events-auto w-[340px] 2xl:w-[420px]">
@@ -242,12 +248,7 @@ export const LandingPage: React.FC = () => {
               />
             </span>
 
-            <h1
-              className="yap-text-primary font-bold leading-[1.06] tracking-[-0.03em]"
-              style={{ fontSize: 'clamp(2.7rem, 6.4vw, 4.75rem)' }}
-            >
-              Yapp your thoughts over.
-            </h1>
+            <HeroTitle />
 
             <p className="yap-text-secondary max-w-xl text-lg leading-relaxed">
               A voice-first AI workflow that turns spoken thoughts and files into
@@ -372,7 +373,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── How it works ─────────────────────────────────────────────────── */}
-        <section id="how-it-works" className="px-6 py-24 sm:py-32">
+        <section id="how-it-works" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
               eyebrow="How it works"
@@ -396,7 +397,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── Core features ────────────────────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
+        <section id="features" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
               eyebrow="Core features"
@@ -500,7 +501,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── BYOK ─────────────────────────────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
+        <section id="byok" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
               eyebrow="Bring your own key"
@@ -570,7 +571,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── Privacy & Trust ──────────────────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
+        <section id="privacy" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
               eyebrow="Privacy and trust"
@@ -597,7 +598,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
+        <section id="faq" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-3xl">
             <SectionHeading eyebrow="Questions" title="Frequently asked." />
             <div className="flex flex-col gap-3">
@@ -653,7 +654,7 @@ export const LandingPage: React.FC = () => {
         <footer className="border-t border-gray-100 px-6 pt-12 pb-8 dark:border-[var(--yap-glass-border)]">
           <div className="mx-auto max-w-5xl">
             {/* Top row */}
-            <div className="mb-10 grid grid-cols-1 gap-10 sm:grid-cols-3">
+            <div className="mb-10 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
               {/* Brand */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2.5">
@@ -673,6 +674,23 @@ export const LandingPage: React.FC = () => {
                     <a
                       key={link.label}
                       href={link.href}
+                      className="text-sm yap-text-secondary transition-colors hover:text-purple-600 dark:hover:text-[var(--yap-violet-hover)] w-fit"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </nav>
+              </div>
+              {/* Substack */}
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-bold uppercase tracking-wider yap-text-hint">Substack</p>
+                <nav className="flex flex-col gap-2.5">
+                  {SUBSTACK_LINKS.map(link => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-sm yap-text-secondary transition-colors hover:text-purple-600 dark:hover:text-[var(--yap-violet-hover)] w-fit"
                     >
                       {link.label}
@@ -718,13 +736,6 @@ export const LandingPage: React.FC = () => {
 };
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-
-const HERO_PILLS = [
-  { text: 'Voice dump to clean notes', posClass: 'yap-pill-pos-1', delay: '0s' },
-  { text: 'Voice-first. Powered by your own key.', posClass: 'yap-pill-pos-2', delay: '0.55s' },
-  { text: 'Messy ideas to structured prompt', posClass: 'yap-pill-pos-3', delay: '1.1s' },
-  { text: 'No account. No subscription.', posClass: 'yap-pill-pos-4', delay: '1.65s' },
-];
 
 const STEPS = [
   {
@@ -892,4 +903,15 @@ const FOOTER_LINKS = [
   { label: 'BYOK',         href: '#byok' },
   { label: 'Privacy',      href: '#privacy' },
   { label: 'FAQ',          href: '#faq' },
+];
+
+const SUBSTACK_LINKS = [
+  {
+    label: 'Introduction',
+    href: 'https://substack.com/@tmshahz/note/p-201830115?utm_source=notes-share-action&utm_medium=web',
+  },
+  {
+    label: 'Getting started',
+    href: 'https://substack.com/@tmshahz/note/p-201844633?utm_source=notes-share-action&utm_medium=web',
+  },
 ];
