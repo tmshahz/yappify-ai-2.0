@@ -1009,13 +1009,30 @@ body {
   50% { transform: scaleY(var(--bar-peak, 0.6)); opacity: 0.88; }
 }
 
-@keyframes yap-hero-word-cycle {
-  0%, 16% { transform: translateY(0); }
-  20%, 36% { transform: translateY(-1.06em); }
-  40%, 56% { transform: translateY(-2.12em); }
-  60%, 76% { transform: translateY(-3.18em); }
-  80%, 96% { transform: translateY(-4.24em); }
-  100% { transform: translateY(0); }
+@keyframes yap-hero-word-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes yap-hero-word-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
 }
 
 /* Floating brand mark (public/yl.png) — float on wrapper, glow on image */
@@ -1057,24 +1074,81 @@ body {
 }
 
 .yap-hero-cycle {
+  position: relative;
   display: block;
-  height: 1.06em;
   min-width: 9.5ch;
+  height: 1.25em;
   overflow: hidden;
   text-align: center;
   color: var(--yap-violet);
 }
 
-.yap-hero-cycle__track {
-  display: flex;
-  flex-direction: column;
-}
-
 .yap-hero-cycle__word {
   display: block;
-  height: 1.06em;
-  line-height: 1.06;
-  flex-shrink: 0;
+  width: 100%;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.yap-hero-cycle__word--idle {
+  position: relative;
+}
+
+.yap-hero-cycle__word--exit,
+.yap-hero-cycle__word--enter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.yap-hero-cycle__word--exit {
+  animation: yap-hero-word-out 600ms var(--yap-ease) forwards;
+}
+
+.yap-hero-cycle__word--enter {
+  animation: yap-hero-word-in 600ms var(--yap-ease) forwards;
+}
+
+/* Hero device mockups — inset from edges, raised toward logo/title */
+.yap-hero-device-wrap {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  top: 38%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.yap-hero-device-wrap--left {
+  left: 10%;
+}
+
+.yap-hero-device-wrap--right {
+  right: 10%;
+}
+
+.yap-hero-device {
+  width: 306px;
+}
+
+@media (min-width: 1280px) {
+  .yap-hero-device-wrap {
+    display: block;
+  }
+}
+
+@media (min-width: 1536px) {
+  .yap-hero-device-wrap--left {
+    left: 12%;
+  }
+
+  .yap-hero-device-wrap--right {
+    right: 12%;
+  }
+
+  .yap-hero-device {
+    width: 378px;
+  }
 }
 
 /* Landing page anchor targets — offset for sticky nav */
@@ -1238,10 +1312,6 @@ body {
   .yap-landing-waveform__bar {
     animation: yap-bar-pulse var(--bar-duration, 1.2s) ease-in-out infinite;
     animation-delay: var(--bar-delay, 0s);
-  }
-
-  .yap-hero-cycle__track {
-    animation: yap-hero-word-cycle 12s var(--yap-ease) infinite;
   }
 
   .yap-reveal {

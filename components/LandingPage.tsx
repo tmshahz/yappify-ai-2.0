@@ -97,6 +97,57 @@ const MiniWaveform: React.FC = () => (
 );
 
 const HERO_CYCLE_WORDS = ['thoughts', 'prompts', 'ideas', 'notes', 'workflows'] as const;
+const HERO_WORD_HOLD_MS = 2500;
+const HERO_WORD_TRANSITION_MS = 600;
+
+const HeroCyclingWord: React.FC = () => {
+  const [index, setIndex] = useState(0);
+  const [prevIndex, setPrevIndex] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let current = 0;
+    let clearAnim: ReturnType<typeof setTimeout> | undefined;
+
+    const intervalId = window.setInterval(() => {
+      setPrevIndex(current);
+      current = (current + 1) % HERO_CYCLE_WORDS.length;
+      setIndex(current);
+      setIsAnimating(true);
+
+      clearAnim = window.setTimeout(() => {
+        setPrevIndex(null);
+        setIsAnimating(false);
+      }, HERO_WORD_TRANSITION_MS);
+    }, HERO_WORD_HOLD_MS + HERO_WORD_TRANSITION_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+      if (clearAnim) window.clearTimeout(clearAnim);
+    };
+  }, []);
+
+  return (
+    <span className="yap-hero-cycle" aria-hidden>
+      {prevIndex !== null && (
+        <span className="yap-hero-cycle__word yap-hero-cycle__word--exit">
+          {HERO_CYCLE_WORDS[prevIndex]}
+        </span>
+      )}
+      <span
+        className={clsx(
+          'yap-hero-cycle__word',
+          isAnimating ? 'yap-hero-cycle__word--enter' : 'yap-hero-cycle__word--idle',
+        )}
+      >
+        {HERO_CYCLE_WORDS[index]}
+      </span>
+    </span>
+  );
+};
 
 const HeroTitle: React.FC = () => (
   <h1
@@ -105,13 +156,7 @@ const HeroTitle: React.FC = () => (
     style={{ fontSize: 'clamp(2.7rem, 6.4vw, 4.75rem)' }}
   >
     <span className="yap-hero-title__line">yapp your</span>
-    <span className="yap-hero-cycle" aria-hidden>
-      <span className="yap-hero-cycle__track">
-        {HERO_CYCLE_WORDS.map((word) => (
-          <span key={word} className="yap-hero-cycle__word">{word}</span>
-        ))}
-      </span>
-    </span>
+    <HeroCyclingWord />
   </h1>
 );
 
@@ -257,9 +302,9 @@ export const LandingPage: React.FC = () => {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section className="relative flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-10">
 
-          {/* Desktop device mockups — xl+ only */}
-          <div className="yap-soft-in pointer-events-none absolute left-0 top-1/2 hidden -translate-y-1/2 xl:block 2xl:left-[3%]">
-            <div className="yap-device yap-device--left pointer-events-auto w-[340px] 2xl:w-[420px]">
+          {/* Desktop device mockups — xl+ only, inset toward hero center */}
+          <div className="yap-hero-device-wrap yap-hero-device-wrap--left yap-soft-in">
+            <div className="yap-device yap-device--left yap-hero-device pointer-events-auto">
               <img
                 src="/hero-dark.png"
                 alt="yappify-ai workspace in dark mode"
@@ -267,8 +312,8 @@ export const LandingPage: React.FC = () => {
               />
             </div>
           </div>
-          <div className="yap-soft-in pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 xl:block 2xl:right-[3%]">
-            <div className="yap-device yap-device--right pointer-events-auto w-[340px] 2xl:w-[420px]">
+          <div className="yap-hero-device-wrap yap-hero-device-wrap--right yap-soft-in">
+            <div className="yap-device yap-device--right yap-hero-device pointer-events-auto">
               <img
                 src="/hero-light.png"
                 alt="yappify-ai workspace in light mode"
