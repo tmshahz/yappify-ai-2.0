@@ -2,26 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
+  Briefcase,
   CheckCircle,
   ChevronDown,
-  ClipboardList,
   Cloud,
-  Copy,
+  Code2,
+  ClipboardList,
   ExternalLink,
   FileAudio,
+  FileText,
+  Github,
+  GraduationCap,
   Key,
   Languages,
+  ListChecks,
   Lock,
   Mic,
   Moon,
+  PenLine,
   Server,
   Sliders,
   Sparkles,
   Sun,
-  Upload,
-  Users,
-  Zap,
-  Github,
+  Type,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useSettings } from '../hooks/useSettings';
@@ -29,16 +32,6 @@ import { useSettings } from '../hooks/useSettings';
 type IconType = React.ComponentType<{ size?: number; className?: string }>;
 
 // ─── Module-level constants ───────────────────────────────────────────────────
-
-// Demo output text (copied when user clicks "Copy Result" in the demo)
-const DEMO_OUTPUT = `Q3 Review and Launch Post-Mortem
-
-Presentation outline:
-1. Q3 results: key metrics and performance
-2. Launch retrospective: what went wrong and why
-3. Strategic rationale: why our approach remains sound
-4. Team update: framed as focused execution
-5. Next steps and confidence indicators`;
 
 // Hero waveform bar data — envelope tallest in the center.
 const WAVEFORM_BARS = Array.from({ length: 28 }, (_, i) => {
@@ -219,22 +212,302 @@ const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }>
   </div>
 );
 
+// ─── Merged interactive modes/features section ───────────────────────────────
+
+interface ModeFeature {
+  icon: IconType;
+  title: string;
+  desc: string;
+  from: string;
+  to: string;
+  inputExample: string;
+  outputExample: string;
+}
+
+interface ParentMode {
+  label: string;
+  icon: IconType;
+  features: ModeFeature[];
+}
+
+const ModesSection: React.FC = () => {
+  const [parentIdx, setParentIdx] = useState(0);
+  const [featureIdx, setFeatureIdx] = useState(0);
+
+  const parent = PARENT_MODES[parentIdx];
+  const feature = parent.features[featureIdx];
+  const selectParent = (i: number) => { setParentIdx(i); setFeatureIdx(0); };
+
+  return (
+    <section id="features" className="yap-landing-anchor px-6 py-24 sm:py-32">
+      <div className="mx-auto max-w-5xl">
+        <SectionHeading
+          eyebrow="Modes"
+          title="The same modes you'll use inside."
+          sub="Pick a parent mode, then explore the features inside it. Click any feature to see a real before-and-after."
+        />
+
+        {/* Centered parent mode selectors */}
+        <div className="yap-reveal mb-10 flex justify-center">
+          <div className="yap-mode-tabs">
+            {PARENT_MODES.map((tab, i) => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.label}
+                  onClick={() => selectParent(i)}
+                  className={clsx('yap-mode-tab', parentIdx === i && 'is-active')}
+                >
+                  <TabIcon size={14} aria-hidden />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Inner feature cards */}
+        <div key={`p-${parentIdx}`} className="yap-tab-enter mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {parent.features.map((f, i) => {
+            const Icon = f.icon;
+            const selected = featureIdx === i;
+            return (
+              <button
+                key={f.title}
+                onClick={() => setFeatureIdx(i)}
+                className={clsx(
+                  'yap-glass-card yap-hover-lift flex h-full text-left rounded-xl border p-5 transition-all',
+                  selected
+                    ? 'yap-glass-active border-purple-600 dark:border-[var(--yap-active-border)]'
+                    : 'border-gray-200 hover:border-purple-300 dark:border-gray-800 dark:hover:border-purple-700',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="yap-icon-mist flex-shrink-0 rounded-lg bg-purple-100 p-2 text-purple-700 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]">
+                    <Icon size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-gray-800 dark:text-[var(--yap-text-1)]">
+                      {f.title}
+                    </p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-[var(--yap-text-2)]">
+                      {f.desc}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected feature preview panel */}
+        <div key={`f-${parentIdx}-${featureIdx}`} className="yap-tab-enter">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium yap-text-secondary dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-2)]">
+              {feature.from}
+            </span>
+            <ArrowRight size={13} className="flex-shrink-0 text-[var(--yap-violet)] opacity-50" aria-hidden />
+            <span className="inline-flex items-center rounded-full border border-[rgba(124,92,252,0.2)] bg-[rgba(124,92,252,0.06)] px-3 py-1 text-xs font-medium text-[var(--yap-violet)]">
+              {feature.to}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="yap-glass-card rounded-2xl p-5">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-wider yap-text-hint">Input</p>
+              <p className="text-sm leading-relaxed yap-text-secondary italic">{feature.inputExample}</p>
+            </div>
+            <div className="yap-glass-card rounded-2xl border-[rgba(124,92,252,0.18)] bg-[rgba(124,92,252,0.04)] p-5 dark:bg-[var(--yap-violet-mist)]">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--yap-violet)]">Output</p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed yap-text-primary">{feature.outputExample}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// ─── Context management section ───────────────────────────────────────────────
+
+const ContextSection: React.FC = () => (
+  <section id="context" className="yap-landing-anchor px-6 py-24 sm:py-32">
+    <div className="mx-auto max-w-5xl">
+      <SectionHeading
+        eyebrow="Context"
+        title="Context is the hard part. Yappify helps clean it."
+        sub="AI tools are only as good as the context you give them. Yappify captures messy thoughts, preserves intent, removes the noise, and turns rough speech into clean prompts, notes, translations, and instructions you can reuse across tools."
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Raw yapping — with voice input active module */}
+        <div className="yap-reveal">
+          <div className="yap-glass-card flex h-full flex-col gap-4 rounded-2xl p-6">
+            <div className="flex items-center gap-2">
+              <div className="yap-demo-record-dot" aria-hidden />
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider yap-text-secondary">
+                Voice input active
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed yap-text-secondary italic">
+              "so um, okay, basically I want to, like, build an onboarding flow, please, and uh it should be fast and not annoying and also maybe show progress, sorry I keep saying maybe, but yeah that's the idea..."
+            </p>
+            <div className="mt-1">
+              <MiniWaveform />
+            </div>
+            <p className="text-xs yap-text-hint">Raw transcript. Filler, repetition, false starts, rambling.</p>
+          </div>
+        </div>
+
+        {/* Cleaning — with prompt enhancer processing animation */}
+        <div className="yap-reveal" style={{ transitionDelay: '70ms' }}>
+          <div className="yap-glass-card flex h-full flex-col gap-4 rounded-2xl border-purple-100 bg-purple-50 p-6 dark:border-[var(--yap-active-border)] dark:bg-[var(--yap-violet-mist)]">
+            <div className="flex items-center gap-2">
+              <div className="yap-icon-mist flex h-7 w-7 items-center justify-center rounded-lg">
+                <Sparkles size={14} />
+              </div>
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--yap-violet)]">
+                Yappify cleans it
+              </span>
+            </div>
+
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(124,92,252,0.22)] bg-[rgba(124,92,252,0.07)] px-3 py-1 text-[11px] font-semibold text-[var(--yap-violet)]">
+                <Sparkles size={11} aria-hidden />
+                Prompt Enhancer
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1.5">
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    className="yap-processing-dot"
+                    style={{ animationDelay: `${i * 0.18}s` }}
+                    aria-hidden
+                  />
+                ))}
+              </div>
+              <span className="font-mono text-xs yap-text-secondary">Processing...</span>
+            </div>
+            <div className="yap-demo-progress rounded-full" aria-hidden />
+
+            <ul className="flex flex-col gap-2 text-sm leading-relaxed yap-text-secondary">
+              <li className="flex items-center gap-2"><CheckCircle size={13} className="text-[var(--yap-violet)] opacity-70" aria-hidden /> Removes filler and repetition</li>
+              <li className="flex items-center gap-2"><CheckCircle size={13} className="text-[var(--yap-violet)] opacity-70" aria-hidden /> Strips unnecessary pleasantries</li>
+              <li className="flex items-center gap-2"><CheckCircle size={13} className="text-[var(--yap-violet)] opacity-70" aria-hidden /> Preserves the real intent</li>
+            </ul>
+            <p className="text-xs yap-text-hint">Less tokens. Clearer signal.</p>
+          </div>
+        </div>
+
+        {/* Clean context */}
+        <div className="yap-reveal" style={{ transitionDelay: '140ms' }}>
+          <div className="yap-demo-stage yap-demo-stage--inverted flex h-full flex-col gap-4 rounded-2xl p-6">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-500">
+              <CheckCircle size={13} aria-hidden />
+              Clean context
+            </div>
+            <p className="yap-demo-output whitespace-pre-wrap text-xs leading-relaxed font-mono">
+              {`Build an onboarding flow.\n- Fast and non-intrusive\n- Show clear progress\n- Prioritize first-run clarity`}
+            </p>
+            <p className="text-xs opacity-60 yap-text-secondary">Ready to paste into any tool.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Use-with */}
+      <div className="yap-reveal mt-10">
+        <p className="mb-4 text-center text-sm yap-text-secondary">
+          Cleaned outputs drop straight into the tools you already use:
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {CONTEXT_USE_WITH.map(label => (
+            <span
+              key={label}
+              className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold yap-text-secondary transition-colors hover:border-purple-300 hover:text-[var(--yap-violet)] dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-2)]"
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+// ─── Who it's for section ─────────────────────────────────────────────────────
+
+const AudienceSection: React.FC = () => (
+  <section id="who" className="yap-landing-anchor px-6 py-24 sm:py-32">
+    <div className="mx-auto max-w-5xl">
+      <SectionHeading
+        eyebrow="Who it's for"
+        title="Built for people who think out loud."
+        sub="If you think faster than you type, Yappify fits the way you already work."
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {AUDIENCES.map((a, i) => {
+          const Icon = a.icon;
+          return (
+            <div key={a.title} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
+              <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-4 rounded-xl border border-gray-200 p-6 dark:border-gray-800">
+                <div className="yap-icon-mist flex h-10 w-10 items-center justify-center rounded-xl">
+                  <Icon size={20} />
+                </div>
+                <p className="text-base font-semibold yap-text-primary">{a.title}</p>
+                <p className="text-sm leading-relaxed yap-text-secondary">{a.body}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+);
+
+// ─── Gemini section ───────────────────────────────────────────────────────────
+
+const GeminiSection: React.FC = () => (
+  <section id="gemini" className="yap-landing-anchor px-6 py-24 sm:py-32">
+    <div className="mx-auto max-w-5xl">
+      <SectionHeading
+        eyebrow="Powered by Gemini"
+        title="Powered by Gemini. Controlled by your key."
+        sub="Yappify is designed around the latest Gemini models for fast speech, text transformation, translation, and prompt-cleaning workflows. Your own key decides how far it goes."
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {GEMINI_POINTS.map((p, i) => {
+          const Icon = p.icon;
+          return (
+            <div key={p.title} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
+              <div className="yap-glass-card yap-hover-lift flex h-full flex-col gap-3 rounded-xl p-6">
+                <div className="yap-icon-mist flex h-9 w-9 items-center justify-center rounded-lg">
+                  <Icon size={18} />
+                </div>
+                <p className="text-sm font-semibold yap-text-primary">{p.title}</p>
+                <p className="text-sm leading-relaxed yap-text-secondary">{p.body}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="yap-reveal mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed yap-text-hint">
+        Usage depends on your own Gemini API tier, limits, and billing setup, not Yappify.
+        Yappify does not provide Gemini access or free usage directly.
+      </p>
+    </div>
+  </section>
+);
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const LandingPage: React.FC = () => {
   const { settings, setSettings } = useSettings();
   const isDark = settings.theme === 'dark';
-  const [activeMode, setActiveMode] = useState(0);
-  const [demoCopied, setDemoCopied] = useState(false);
 
   const toggleTheme = () => {
     setSettings(prev => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
-  };
-
-  const handleDemoCopy = () => {
-    try { navigator.clipboard.writeText(DEMO_OUTPUT); } catch {}
-    setDemoCopied(true);
-    setTimeout(() => setDemoCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -350,7 +623,7 @@ export const LandingPage: React.FC = () => {
                 <ArrowRight size={18} aria-hidden />
               </Link>
               <a
-                href="#how-it-works"
+                href="#context"
                 className="yap-ghost-button inline-flex items-center gap-2 rounded-xl border px-6 py-3.5 text-base font-semibold transition-all"
               >
                 See how it works
@@ -372,227 +645,22 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Watch a thought become usable ────────────────────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-5xl">
-            <SectionHeading
-              eyebrow="In action"
-              title="Watch a thought become usable."
-              sub="Speak messy, get something polished. The whole workflow in one step."
-            />
+        {/* ── Context management ───────────────────────────────────────────── */}
+        <ContextSection />
 
-            <div className="yap-reveal grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+        {/* ── Who it's for ─────────────────────────────────────────────────── */}
+        <AudienceSection />
 
-              {/* Stage 1: Raw input */}
-              <div className="yap-demo-stage rounded-2xl p-5">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="yap-demo-record-dot" aria-hidden />
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider yap-text-secondary">
-                    Voice input active
-                  </span>
-                </div>
-                <p className="text-sm leading-relaxed yap-text-secondary italic">
-                  "ok so the presentation needs to cover Q3 results and also the
-                  launch issues but like, we still believe in the direction, and
-                  maybe mention the team thing but not in a way that sounds bad..."
-                </p>
-                <div className="mt-5">
-                  <MiniWaveform />
-                </div>
-              </div>
-
-              {/* Stage 2: Processing */}
-              <div className="yap-demo-stage rounded-2xl p-5">
-                <div className="mb-4">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(124,92,252,0.22)] bg-[rgba(124,92,252,0.07)] px-3 py-1 text-[11px] font-semibold text-[var(--yap-violet)]">
-                    <Sparkles size={11} aria-hidden />
-                    Prompt Enhancer
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex gap-1.5">
-                    {[0, 1, 2].map(i => (
-                      <div
-                        key={i}
-                        className="yap-processing-dot"
-                        style={{ animationDelay: `${i * 0.18}s` }}
-                        aria-hidden
-                      />
-                    ))}
-                  </div>
-                  <span className="font-mono text-xs yap-text-secondary">Processing...</span>
-                </div>
-                <div className="yap-demo-progress rounded-full" aria-hidden />
-                <p className="mt-4 text-xs leading-relaxed yap-text-secondary opacity-60">
-                  Analyzing structure and intent. Removing filler. Organizing
-                  into clear output...
-                </p>
-              </div>
-
-              {/* Stage 3: Output (inverted — dark in light mode, light in dark mode) */}
-              <div className="yap-demo-stage yap-demo-stage--inverted rounded-2xl p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 dark:text-emerald-500">
-                    <CheckCircle size={13} aria-hidden />
-                    Ready
-                  </div>
-                  <button
-                    onClick={handleDemoCopy}
-                    className="yap-demo-copy-btn flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
-                  >
-                    {demoCopied
-                      ? <><CheckCircle size={11} aria-hidden />Copied</>
-                      : <><Copy size={11} aria-hidden />Copy Result</>
-                    }
-                  </button>
-                </div>
-                <div
-                  className="yap-demo-output text-xs leading-relaxed font-mono whitespace-pre-wrap"
-                  style={{ opacity: 0.9 }}
-                >
-                  {DEMO_OUTPUT}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ── How it works ─────────────────────────────────────────────────── */}
-        <section id="how-it-works" className="yap-landing-anchor px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-5xl">
-            <SectionHeading
-              eyebrow="How it works"
-              title="Three steps. No friction."
-              sub="From the moment a thought arrives to the moment it becomes usable, the workflow stays linear and fast."
-            />
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-              {STEPS.map((step, i) => (
-                <div key={step.n} className="yap-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
-                  <div className="yap-glass-card yap-hover-lift yap-glow-in flex h-full flex-col gap-5 rounded-2xl p-6">
-                    <span className="yap-step-number">
-                      {step.n}
-                    </span>
-                    <p className="text-base font-semibold yap-text-primary">{step.title}</p>
-                    <p className="text-sm leading-relaxed yap-text-secondary">{step.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Core features ────────────────────────────────────────────────── */}
-        <section id="features" className="yap-landing-anchor px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-5xl">
-            <SectionHeading
-              eyebrow="Core features"
-              title="The same modes you'll use inside."
-              sub="These are the actual modes from the workspace, recognizable the moment you open it."
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURES.map((feature, i) => {
-                const Icon = feature.icon;
-                return (
-                  <div key={feature.title} className="yap-reveal" style={{ transitionDelay: `${(i % 4) * 60}ms` }}>
-                    <div
-                      className={clsx(
-                        'yap-glass-card yap-hover-lift yap-glow-in h-full rounded-xl border p-5 transition-all',
-                        'border-gray-200 bg-white hover:border-purple-300',
-                        'dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-700',
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="yap-icon-mist flex-shrink-0 rounded-lg bg-purple-100 p-2 text-purple-700 dark:bg-[var(--yap-violet-mist)] dark:text-[var(--yap-violet-hover)]">
-                          <Icon size={20} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-base font-semibold text-gray-800 dark:text-[var(--yap-text-1)]">
-                            {feature.title}
-                          </p>
-                          <p className="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-[var(--yap-text-2)]">
-                            {feature.desc}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Modes built for real use (interactive tabs) ───────────────────── */}
-        <section className="px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-5xl">
-            <SectionHeading
-              eyebrow="Real use"
-              title="Modes built for real use."
-              sub="Click any mode to see how messy input becomes usable output."
-            />
-
-            {/* Tab bar */}
-            <div className="yap-reveal mb-6">
-              <div className="yap-mode-tabs flex gap-2 overflow-x-auto pb-2">
-                {MODE_TABS.map((tab, i) => {
-                  const TabIcon = tab.icon;
-                  return (
-                    <button
-                      key={tab.label}
-                      onClick={() => setActiveMode(i)}
-                      className={clsx('yap-mode-tab', activeMode === i && 'is-active')}
-                    >
-                      <TabIcon size={14} aria-hidden />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* From / to summary */}
-            <div className="yap-reveal mb-4 flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium yap-text-secondary dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-2)]">
-                {MODE_TABS[activeMode].from}
-              </span>
-              <ArrowRight size={13} className="flex-shrink-0 text-[var(--yap-violet)] opacity-50" aria-hidden />
-              <span className="inline-flex items-center rounded-full border border-[rgba(124,92,252,0.2)] bg-[rgba(124,92,252,0.06)] px-3 py-1 text-xs font-medium text-[var(--yap-violet)]">
-                {MODE_TABS[activeMode].to}
-              </span>
-            </div>
-
-            {/* Tab content — key changes on tab switch, triggering the fade animation */}
-            <div key={activeMode} className="yap-reveal is-visible yap-tab-enter grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* Input */}
-              <div className="yap-glass-card rounded-2xl p-5">
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-wider yap-text-hint">
-                  Input
-                </p>
-                <p className="text-sm leading-relaxed yap-text-secondary italic">
-                  {MODE_TABS[activeMode].inputExample}
-                </p>
-              </div>
-              {/* Output */}
-              <div className="yap-glass-card rounded-2xl p-5 border-[rgba(124,92,252,0.18)] bg-[rgba(124,92,252,0.04)] dark:bg-[var(--yap-violet-mist)]">
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--yap-violet)]">
-                  Output
-                </p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed yap-text-primary">
-                  {MODE_TABS[activeMode].outputExample}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── Merged interactive modes / features ──────────────────────────── */}
+        <ModesSection />
 
         {/* ── BYOK ─────────────────────────────────────────────────────────── */}
         <section id="byok" className="yap-landing-anchor px-6 py-24 sm:py-32">
           <div className="mx-auto max-w-5xl">
             <SectionHeading
               eyebrow="Bring your own key"
-              title="You bring the key. yappify-ai gives you the workflow."
-              sub="yappify-ai is the interface, not the AI provider. You connect directly to your own account and stay in control."
+              title="No account. No subscription. Your API key powers the workspace."
+              sub="Yappify provides the workflow. Your own Gemini API key powers the AI usage. You control access, usage, and cost."
             />
 
             {/* Flow visualization: Your Key → yappify-ai → AI Provider */}
@@ -633,7 +701,7 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {BYOK_CARDS.map((card, i) => {
                 const CardIcon = card.icon;
                 return (
@@ -655,6 +723,9 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {/* ── Gemini ───────────────────────────────────────────────────────── */}
+        <GeminiSection />
 
         {/* ── Privacy & Trust ──────────────────────────────────────────────── */}
         <section id="privacy" className="yap-landing-anchor px-6 py-24 sm:py-32">
@@ -721,7 +792,7 @@ export const LandingPage: React.FC = () => {
               Start yapping.
             </h2>
             <p className="text-base leading-relaxed yap-text-secondary">
-              No account. No subscription. Bring your own key.
+              Open-source. No account. No subscription. Bring your own key.
             </p>
             <Link
               to="/app"
@@ -824,92 +895,163 @@ export const LandingPage: React.FC = () => {
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
-const STEPS = [
+const PARENT_MODES: ParentMode[] = [
   {
-    n: 1,
-    title: 'Choose a mode',
-    body: 'Speech-to-Text, Translate, or Upload. Each mode shapes how your input becomes output.',
-  },
-  {
-    n: 2,
-    title: 'Record or upload',
-    body: 'Press the mic to speak, or drop an audio file. No typing required.',
-  },
-  {
-    n: 3,
-    title: 'Process and copy',
-    body: 'Get a transcript, enhanced prompt, translation, summary, or speaking notes. Then copy and go.',
-  },
-];
-
-const FEATURES: Array<{ icon: IconType; title: string; desc: string }> = [
-  { icon: Sparkles,     title: 'Prompt Enhancer',      desc: 'Clean up speech, remove filler, and keep your intent as a stronger prompt.' },
-  { icon: Zap,          title: 'Quick Notes',           desc: 'Turn a transcript into concise, high-density notes.' },
-  { icon: Sliders,      title: 'Custom Modes',          desc: 'Tune yappify-ai for your own repeated workflows.' },
-  { icon: Upload,       title: 'Upload Files',          desc: 'Process audio files into exactly the output you need.' },
-  { icon: FileAudio,    title: 'Raw Transcription',     desc: 'Generate a clean transcript, nothing else.' },
-  { icon: ClipboardList, title: 'Media Summary',        desc: 'A structured summary with decisions and themes.' },
-  { icon: Users,        title: 'Speaker Recognition',   desc: 'Transcript with speaker separation where possible.' },
-  { icon: Languages,    title: 'Translation',           desc: 'Speak it, translate it, send it. Transliteration supported.' },
-];
-
-interface ModeTab {
-  label: string;
-  icon: IconType;
-  from: string;
-  to: string;
-  inputExample: string;
-  outputExample: string;
-}
-
-const MODE_TABS: ModeTab[] = [
-  {
-    label: 'Voice notes',
+    label: 'Speech-to-Text',
     icon: Mic,
-    from: 'Rough rambling recording',
-    to: 'Clean bullet notes',
-    inputExample: '"I need to write up what happened in the meeting today, we talked about the timeline and Sarah wants to push the launch date but Mark is worried about QA and we still need to hear back from legal about the contracts..."',
-    outputExample: 'Meeting summary: 24 June\n\n• Launch timeline under review\n• Sarah: push launch forward\n• Mark: QA blockers unresolved\n• Pending: legal review of contracts\n• Action: Follow up with legal by EOD',
-  },
-  {
-    label: 'Prompt building',
-    icon: Sparkles,
-    from: 'Rough idea',
-    to: 'Structured AI prompt',
-    inputExample: '"write me a prompt that helps me make product descriptions that sound premium but not over-hyped and still honest"',
-    outputExample: 'You are a product copywriter with a premium, honest voice. Write a product description for [PRODUCT]. Keep it under 80 words. Sound confident and clear, never exaggerated. Lead with the core benefit, then add supporting detail. Avoid buzzwords.',
+    features: [
+      {
+        icon: Sparkles,
+        title: 'Prompt Enhancer',
+        desc: 'Clean up speech, remove filler, and keep your intent as a stronger prompt.',
+        from: 'Rough idea',
+        to: 'Structured AI prompt',
+        inputExample: '"write me a prompt that helps me make product descriptions that sound premium but not over-hyped and still honest"',
+        outputExample: 'You are a product copywriter with a premium, honest voice. Write a product description for [PRODUCT]. Keep it under 80 words. Sound confident and clear, never exaggerated. Lead with the core benefit, then add supporting detail. Avoid buzzwords.',
+      },
+      {
+        icon: FileText,
+        title: 'Quick Notes',
+        desc: 'Turn a transcript into concise, high-density notes.',
+        from: 'Rough rambling recording',
+        to: 'Clean bullet notes',
+        inputExample: '"I need to write up what happened in the meeting today, we talked about the timeline and Sarah wants to push the launch date but Mark is worried about QA and we still need to hear back from legal about the contracts..."',
+        outputExample: 'Meeting summary: 24 June\n\n• Launch timeline under review\n• Sarah: push launch forward\n• Mark: QA blockers unresolved\n• Pending: legal review of contracts\n• Action: Follow up with legal by EOD',
+      },
+      {
+        icon: Sliders,
+        title: 'Custom Modes',
+        desc: 'Tune yappify-ai for your own repeated workflows.',
+        from: 'Your custom instruction',
+        to: 'Consistent output every time',
+        inputExample: '[Custom mode: Rewrite my draft to sound professional and warm. Remove filler. Keep the key ask clear and direct. No corporate speak.]',
+        outputExample: 'Hi [Name], I hope you are well. Following up on the proposal from last week. Would you be open to a 20-minute call to discuss next steps? I am available Thursday or Friday afternoon. Looking forward to it.',
+      },
+    ],
   },
   {
     label: 'Translation',
     icon: Languages,
-    from: 'Source text or speech',
-    to: 'Translated message',
-    inputExample: '"Hello, I wanted to ask about the return policy for an order I placed last week. The item arrived damaged and I would like a replacement or refund."',
-    outputExample: 'Spanish:\n"Hola, queria preguntar sobre la politica de devoluciones de un pedido que realize la semana pasada. El articulo llego danado y me gustaria un reemplazo o reembolso."',
+    features: [
+      {
+        icon: Languages,
+        title: 'Translate',
+        desc: 'Speak it, translate it, send it. Quick multilingual communication.',
+        from: 'Source text or speech',
+        to: 'Translated message',
+        inputExample: '"Hello, I wanted to ask about the return policy for an order I placed last week. The item arrived damaged and I would like a replacement or refund."',
+        outputExample: 'Spanish:\n"Hola, queria preguntar sobre la politica de devoluciones de un pedido que realize la semana pasada. El articulo llego danado y me gustaria un reemplazo o reembolso."',
+      },
+      {
+        icon: Type,
+        title: 'Transliteration',
+        desc: 'Write the language in the script you can actually type.',
+        from: 'Translated text',
+        to: 'Readable in your script',
+        inputExample: '[Translation output in Devanagari script, hard to type or paste into most chat tools.]',
+        outputExample: 'Romanized:\n"Namaste, aap kaise hain? Meeting kal sham chaar baje hai."',
+      },
+      {
+        icon: Mic,
+        title: 'Speak & Translate',
+        desc: 'Record in one language, send it in another, no retyping.',
+        from: 'Spoken input',
+        to: 'Translated output',
+        inputExample: '[Voice note spoken in English: asking a host to check late check-in availability for Saturday.]',
+        outputExample: "French:\n\"Bonjour, serait-il possible de prevoir un enregistrement tardif ce samedi ? Nous arriverons en fin d'apres-midi. Merci beaucoup.\"",
+      },
+    ],
   },
   {
-    label: 'File processing',
-    icon: Upload,
-    from: 'Uploaded audio or file',
-    to: 'Summary and action items',
-    inputExample: '[40-minute strategy call recording, 3 speakers, uploaded as MP3]',
-    outputExample: 'Key decisions:\n• Quarterly review cycle adopted\n• Two-market pilot approved (UK, Canada)\n• Q3 hiring target: 4 new roles\n\nAction items:\n• Book UK kick-off call (Maya, by July 8)\n• Draft pilot brief (Ravi, by July 5)\n• Share resource plan with board (Marcus)',
+    label: 'Upload Mode',
+    icon: FileAudio,
+    features: [
+      {
+        icon: FileAudio,
+        title: 'Raw Transcription',
+        desc: 'Turn uploaded audio or video into a clean transcript, with speaker separation where useful.',
+        from: 'Uploaded media file',
+        to: 'Clean transcript',
+        inputExample: '[45-minute interview recording, 2 speakers, uploaded as MP3]',
+        outputExample: '[00:02] Speaker 1: Thanks for making time. Can you walk me through how your team plans sprints?\n[00:18] Speaker 2: Sure. We start with a backlog review, then point the tickets together...\n[11:42] Speaker 1: And how do you handle carryover?',
+      },
+      {
+        icon: ClipboardList,
+        title: 'Media Summary',
+        desc: 'Turn uploaded audio, video, or transcripts into a concise summary with the key themes.',
+        from: 'Uploaded audio, video, or transcript',
+        to: 'Concise summary',
+        inputExample: '[40-minute strategy call recording, 3 speakers, uploaded as MP3]',
+        outputExample: 'Summary: Strategy call, 24 June\n\nThemes:\n• Quarterly review cycle adopted\n• Two-market pilot approved (UK, Canada)\n• Q3 hiring target: 4 new roles\n\nOpen question: budget sign-off still pending from finance.',
+      },
+      {
+        icon: ListChecks,
+        title: 'Action Items',
+        desc: 'Pull clear next steps, owners, and tasks out of uploaded meetings, calls, or media.',
+        from: 'Uploaded meeting or audio',
+        to: 'Clear action items',
+        inputExample: '[30-minute project sync recording, uploaded as M4A]',
+        outputExample: 'Action items:\n• Book UK kick-off call (Maya, by July 8)\n• Draft pilot brief (Ravi, by July 5)\n• Share resource plan with board (Marcus)\n• Confirm QA window before pilot (Lead, by July 3)',
+      },
+    ],
+  },
+];
+
+const CONTEXT_USE_WITH = [
+  'ChatGPT',
+  'Claude',
+  'Cursor',
+  'Gemini',
+  'Local AI models',
+  'Coding workflows',
+  'Documents',
+  'Emails',
+  'Notes',
+];
+
+const AUDIENCES: Array<{ icon: IconType; title: string; body: string }> = [
+  {
+    icon: GraduationCap,
+    title: 'Students',
+    body: 'Turn lectures, study thoughts, and rough notes into cleaner summaries and study material.',
   },
   {
-    label: 'Speaking prep',
-    icon: Users,
-    from: 'Rough topic notes',
-    to: 'Speaking guide',
-    inputExample: '"I have a board pitch next week about our new internal onboarding tool. I want to cover why we built it, what problem it solves, what it does, and what we need from the board."',
-    outputExample: 'Board pitch structure\n\n1. Hook (30s): "Onboarding was taking 3x longer than target"\n2. What we built (60s): One clear demo flow\n3. Impact so far (30s): Key early metrics\n4. Ask (30s): Budget approval for 2 engineers and Q4 rollout',
+    icon: Code2,
+    title: 'Builders',
+    body: 'Talk through bugs, app ideas, feature changes, and implementation plans, then turn them into prompts for Cursor, Claude, ChatGPT, Gemini, or local models.',
   },
   {
-    label: 'Custom workflows',
-    icon: Sliders,
-    from: 'Your custom instruction',
-    to: 'Consistent output every time',
-    inputExample: '[Custom mode: Rewrite my draft to sound professional and warm. Remove filler. Keep the key ask clear and direct. No corporate speak.]',
-    outputExample: 'Hi [Name], I hope you are well. Following up on the proposal from last week. Would you be open to a 20-minute call to discuss next steps? I am available Thursday or Friday afternoon. Looking forward to it.',
+    icon: PenLine,
+    title: 'Creators',
+    body: 'Turn idea dumps into scripts, captions, outlines, hooks, content plans, and posts.',
+  },
+  {
+    icon: Briefcase,
+    title: 'Professionals',
+    body: 'Turn client notes, meeting thoughts, updates, and rough messages into structured, polished outputs.',
+  },
+];
+
+const GEMINI_POINTS: Array<{ icon: IconType; title: string; body: string }> = [
+  {
+    icon: Key,
+    title: 'Keys via Google AI Studio',
+    body: 'Gemini API keys are available through Google AI Studio for Google account users. Bring yours and plug it in.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Great for light use',
+    body: 'Free-tier usage can be great for casual use, hobbyists, testing, and light workflows. It is a solid way to try Yappify.',
+  },
+  {
+    icon: Cloud,
+    title: 'Add credits for headroom',
+    body: 'For heavier usage, add billing or API credits to your own Google account for more headroom and a smoother experience.',
+  },
+  {
+    icon: Server,
+    title: 'Your tier, your limits',
+    body: 'Rate limits, model access, and capacity depend on your own Gemini API tier and billing setup, not Yappify.',
   },
 ];
 
@@ -929,13 +1071,18 @@ const BYOK_FLOW: ByokFlowStep[] = [
 const BYOK_CARDS: Array<{ icon: IconType; title: string; body: string }> = [
   {
     icon: Key,
-    title: 'Your key, your control',
+    title: 'User-owned Gemini key',
     body: 'Connect your own Google Gemini API key. No shared backend, no resold AI access. Your key is optionally saved in your browser, not on any server.',
   },
   {
     icon: Sparkles,
-    title: "Free because we don't resell AI",
-    body: "Since you connect directly to your own account, we don't charge for model usage. Google Gemini offers free-tier API access. Many users can start without any cost.",
+    title: 'No Yappify account',
+    body: 'No signup wall. No Yappify subscription. Add your key and start yapping. The workflow is free to use as an interface.',
+  },
+  {
+    icon: Github,
+    title: 'Open-source workflow',
+    body: 'Yappify is open-source. Inspect it, run it, and adapt it. The interface is the product. Your API key powers the AI usage, and you stay in control.',
   },
 ];
 
@@ -959,12 +1106,32 @@ const TRUST: Array<{ icon: IconType; title: string; body: string }> = [
 
 const FAQS = [
   {
-    q: 'Is yappify-ai really free?',
-    a: 'yappify-ai is free to use as an interface. You connect your own Google Gemini API key, so you are not paying us for model access. Google offers free-tier API access that many users can start with.',
+    q: 'Can I use Yappify with Gemini\'s free tier?',
+    a: 'Yes. Gemini API keys are available through Google AI Studio for Google account users, and free-tier usage can be great for casual use, hobbyists, testing, and light workflows. Yappify itself does not provide Gemini access. You bring your own key.',
+  },
+  {
+    q: 'Why would I add API credits?',
+    a: 'For heavier usage, adding billing or API credits to your own Google account can provide more headroom, longer usage, and a smoother experience. Credits go directly to your Google account, not to Yappify.',
+  },
+  {
+    q: 'Does Yappify charge a subscription?',
+    a: 'No. There is no Yappify account and no Yappify subscription. Yappify is a free, open-source workflow layer. Your own Gemini API key powers the AI usage, and you control cost.',
+  },
+  {
+    q: 'What happens if I hit a Gemini rate limit?',
+    a: 'Rate limits, model access, and capacity are set by your own Gemini API tier and billing setup. If you hit a limit, you can wait, reduce usage, or add billing/API credits to your Google account for more headroom.',
+  },
+  {
+    q: 'Can I use the output in ChatGPT, Claude, Cursor, Gemini, or local AI models?',
+    a: 'Yes. Yappify turns messy input into clean prompts, notes, translations, and instructions. Copy the output into ChatGPT, Claude, Cursor, Gemini, local AI models, coding workflows, documents, emails, or notes, wherever you work.',
+  },
+  {
+    q: 'Is Yappify open source?',
+    a: 'Yes. Yappify is open-source. You can inspect it, run it, and adapt it. Your API key stays under your control, and there is no required server-side account just to use the app.',
   },
   {
     q: 'What does BYOK mean?',
-    a: 'Bring Your Own Key. Instead of locking you into another subscription, yappify-ai lets you connect your own Gemini API key and stay in control of your AI access.',
+    a: 'Bring Your Own Key. Instead of locking you into another subscription, Yappify lets you connect your own Gemini API key and stay in control of your AI access.',
   },
   {
     q: 'Where is my API key stored?',
@@ -972,22 +1139,20 @@ const FAQS = [
   },
   {
     q: 'Is my data private?',
-    a: "yappify-ai is designed around user control and minimizes unnecessary server-side storage. Your requests are still sent to your chosen AI provider (Google Gemini), so their handling is subject to Google's privacy policy.",
-  },
-  {
-    q: 'Do I need an account?',
-    a: 'No signup wall. Add your key and start yapping.',
+    a: "Yappify is designed around user control and minimizes unnecessary server-side storage. Your requests are still sent to your chosen AI provider (Google Gemini), so their handling is subject to Google's privacy policy.",
   },
   {
     q: 'What can I actually do with it?',
-    a: 'Transcribe speech, enhance prompts, capture quick notes, translate, and process uploaded files into transcripts, summaries, speaker transcripts, or action items.',
+    a: 'Transcribe speech, enhance prompts, capture quick notes, translate with optional transliteration, build custom modes for repeated workflows, and process uploaded files into transcripts, summaries, speaker transcripts, or action items.',
   },
 ];
 
 const FOOTER_LINKS = [
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Features',     href: '#features' },
+  { label: 'How it works', href: '#context' },
+  { label: 'Context',      href: '#context' },
+  { label: 'Modes',        href: '#features' },
   { label: 'BYOK',         href: '#byok' },
+  { label: 'Gemini',       href: '#gemini' },
   { label: 'Privacy',      href: '#privacy' },
   { label: 'FAQ',          href: '#faq' },
 ];
