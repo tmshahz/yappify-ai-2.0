@@ -44,6 +44,21 @@ const WAVEFORM_BARS = Array.from({ length: 28 }, (_, i) => {
   return { peak: peak.toFixed(2), delay, duration };
 });
 
+const SUBSTACK_LINKS = [
+  {
+    label: 'Introduction',
+    href: 'https://substack.com/@tmshahz/note/p-201830115?utm_source=notes-share-action&utm_medium=web',
+  },
+  {
+    label: 'Getting started',
+    href: 'https://substack.com/@tmshahz/note/p-201844633?utm_source=notes-share-action&utm_medium=web',
+  },
+] as const;
+
+function getSubstackLink(label: (typeof SUBSTACK_LINKS)[number]['label']) {
+  return SUBSTACK_LINKS.find((link) => link.label === label)!;
+}
+
 // Smaller waveform used in the demo stage 1 (active mic/recording visual).
 const MINI_BARS = Array.from({ length: 14 }, (_, i) => {
   const t = i / 13;
@@ -212,6 +227,26 @@ const SectionHeading: React.FC<{ eyebrow: string; title: string; sub?: string }>
   </div>
 );
 
+const SubstackGuideLink: React.FC<{
+  href: string;
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ href, label, children, className }) => (
+  <div className={clsx('yap-reveal flex justify-center', className)}>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="yap-hover-lift yap-glass-card inline-flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold yap-text-secondary transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-[var(--yap-glass-border)] dark:hover:border-[var(--yap-violet-ring)] dark:hover:text-[var(--yap-violet-hover)]"
+    >
+      {children}
+      <ExternalLink size={14} aria-hidden />
+    </a>
+  </div>
+);
+
 // ─── Merged interactive modes/features section ───────────────────────────────
 
 interface ModeFeature {
@@ -322,6 +357,14 @@ const ModesSection: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <SubstackGuideLink
+          href={getSubstackLink('Getting started').href}
+          label={getSubstackLink('Getting started').label}
+          className="mt-10"
+        >
+          Read the getting started guide
+        </SubstackGuideLink>
       </div>
     </section>
   );
@@ -462,6 +505,13 @@ const AudienceSection: React.FC = () => (
           );
         })}
       </div>
+      <SubstackGuideLink
+        href={getSubstackLink('Introduction').href}
+        label={getSubstackLink('Introduction').label}
+        className="mt-10"
+      >
+        Read the Yappify introduction
+      </SubstackGuideLink>
     </div>
   </section>
 );
@@ -1155,17 +1205,6 @@ const FOOTER_LINKS = [
   { label: 'Gemini',       href: '#gemini' },
   { label: 'Privacy',      href: '#privacy' },
   { label: 'FAQ',          href: '#faq' },
-];
-
-const SUBSTACK_LINKS = [
-  {
-    label: 'Introduction',
-    href: 'https://substack.com/@tmshahz/note/p-201830115?utm_source=notes-share-action&utm_medium=web',
-  },
-  {
-    label: 'Getting started',
-    href: 'https://substack.com/@tmshahz/note/p-201844633?utm_source=notes-share-action&utm_medium=web',
-  },
 ];
 
 const SOCIAL_LINKS: Array<{ label: string; href: string; Icon: IconType }> = [

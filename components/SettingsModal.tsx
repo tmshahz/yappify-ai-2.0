@@ -6,6 +6,7 @@ import {
   CURATED_GEMINI_MODELS,
   DEFAULT_MODEL_ID,
   fetchAvailableModels,
+  isSupportedGeminiModelId,
 } from '../services/geminiService';
 import { Modal } from './Modal';
 
@@ -25,7 +26,7 @@ function normalizeSettings(settings: SettingsData): SettingsData {
     microphoneId: typeof settings?.microphoneId === 'string' ? settings.microphoneId : '',
     saveApiKey: Boolean(settings?.saveApiKey),
     modelId:
-      typeof settings?.modelId === 'string' && settings.modelId.length > 0
+      typeof settings?.modelId === 'string' && isSupportedGeminiModelId(settings.modelId)
         ? settings.modelId
         : DEFAULT_MODEL_ID,
   };
@@ -176,6 +177,11 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
     onUpdateSettings({ ...safeSettings, apiKey: '' });
   };
 
+  const handleModelChange = (modelId: string) => {
+    if (!isSupportedGeminiModelId(modelId)) return;
+    onUpdateSettings({ ...safeSettings, modelId });
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -245,7 +251,7 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
           </label>
           <select
             value={safeSettings.modelId}
-            onChange={(event) => onUpdateSettings({ ...safeSettings, modelId: event.target.value })}
+            onChange={(event) => handleModelChange(event.target.value)}
             className="yap-glass-input w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500/50 dark:border-[var(--yap-glass-border)] dark:bg-[var(--yap-surface-3)] dark:text-[var(--yap-text-1)]"
           >
             {curatedModels.map((model) => (
@@ -255,12 +261,12 @@ const SettingsModalContent: React.FC<SettingsModalProps> = ({
             ))}
           </select>
           <p className="text-xs text-gray-400">
-            Yappify is tuned for Gemini 2.5 Flash. Future 2.5+ Flash models can be added here
+            Yappify defaults to Gemini 2.5 Flash. Curated Flash models can be added here
             without silently changing your selection.
           </p>
           {selectedUnavailable && (
             <p className="text-xs text-red-500">
-              The selected model was not returned by your API key. Choose an available 2.5+ Flash
+              The selected model was not returned by your API key. Choose an available Flash
               model before processing.
             </p>
           )}

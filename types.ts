@@ -31,6 +31,12 @@ export enum AppMode {
 
 export type ThemeMode = 'light' | 'dark';
 
+export type GeminiModelId =
+  | 'gemini-2.5-flash-lite'
+  | 'gemini-2.5-flash'
+  | 'gemini-3.1-flash-lite'
+  | 'gemini-3.5-flash';
+
 export type TransliterationFormat = 'Roman Letters' | 'Native Script' | 'Custom';
 
 export type UploadProcessingType = 'raw-transcription' | 'speaker-transcript' | 'meeting-summary' | 'action-items';
@@ -48,7 +54,7 @@ export interface SettingsData {
   apiKey: string;
   microphoneId: string;
   saveApiKey: boolean;
-  modelId: string;
+  modelId: GeminiModelId;
 }
 
 export interface ApiUsage {

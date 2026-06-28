@@ -1,8 +1,8 @@
-import type { TranslateSettings, UploadProcessingType, UsageResult } from '../types';
+import type { GeminiModelId, TranslateSettings, UploadProcessingType, UsageResult } from '../types';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
-export const DEFAULT_MODEL_ID = 'gemini-2.5-flash';
+export const DEFAULT_MODEL_ID: GeminiModelId = 'gemini-2.5-flash';
 
 export interface GeminiModel {
   name: string;
@@ -11,7 +11,17 @@ export interface GeminiModel {
   supportedGenerationMethods: string[];
 }
 
-export const CURATED_GEMINI_MODELS: GeminiModel[] = [
+type CuratedGeminiModel = GeminiModel & {
+  name: GeminiModelId;
+};
+
+export const CURATED_GEMINI_MODELS: CuratedGeminiModel[] = [
+  {
+    name: 'gemini-2.5-flash-lite',
+    displayName: 'Gemini 2.5 Flash-Lite',
+    description: 'Cheapest, lowest latency',
+    supportedGenerationMethods: ['generateContent'],
+  },
   {
     name: 'gemini-2.5-flash',
     displayName: 'Gemini 2.5 Flash',
@@ -19,12 +29,22 @@ export const CURATED_GEMINI_MODELS: GeminiModel[] = [
     supportedGenerationMethods: ['generateContent'],
   },
   {
-    name: 'gemini-2.5-flash-lite',
-    displayName: 'Gemini 2.5 Flash Lite',
-    description: 'Lower latency',
+    name: 'gemini-3.1-flash-lite',
+    displayName: 'Gemini 3.1 Flash-Lite',
+    description: 'Better Lite performance, cheaper than 2.5 Flash',
+    supportedGenerationMethods: ['generateContent'],
+  },
+  {
+    name: 'gemini-3.5-flash',
+    displayName: 'Gemini 3.5 Flash',
+    description: 'Best quality, credits recommended',
     supportedGenerationMethods: ['generateContent'],
   },
 ];
+
+export function isSupportedGeminiModelId(modelId: string): modelId is GeminiModelId {
+  return CURATED_GEMINI_MODELS.some((model) => model.name === modelId);
+}
 
 const GEMINI_25_FLASH_RATES = {
   textInputPerMillion: 0.30,

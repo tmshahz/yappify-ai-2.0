@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SettingsData } from '../types';
 import { LEGACY_KEYS, readLegacyStorage, readStorage, STORAGE_KEYS, writeStorage } from '../lib/storage';
-import { DEFAULT_MODEL_ID } from '../services/geminiService';
+import { DEFAULT_MODEL_ID, isSupportedGeminiModelId } from '../services/geminiService';
 
 export const DEFAULT_SETTINGS: SettingsData = {
   theme: 'dark',
@@ -13,18 +13,39 @@ export const DEFAULT_SETTINGS: SettingsData = {
 
 type LegacySettings = Partial<SettingsData> & {
   liveTranscription?: boolean;
+  modelId?: string;
 };
+
+type StoredSettings = Partial<Omit<SettingsData, 'modelId'>> & {
+  modelId?: string;
+};
+
+function normalizeSettings(settings: StoredSettings | null | undefined): SettingsData {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    theme: settings?.theme === 'light' ? 'light' : settings?.theme === 'dark' ? 'dark' : DEFAULT_SETTINGS.theme,
+    apiKey: typeof settings?.apiKey === 'string' ? settings.apiKey : DEFAULT_SETTINGS.apiKey,
+    microphoneId:
+      typeof settings?.microphoneId === 'string'
+        ? settings.microphoneId
+        : DEFAULT_SETTINGS.microphoneId,
+    saveApiKey: Boolean(settings?.saveApiKey),
+    modelId:
+      typeof settings?.modelId === 'string' && isSupportedGeminiModelId(settings.modelId)
+        ? settings.modelId
+        : DEFAULT_MODEL_ID,
+  };
+}
 
 function migrateSettings(): SettingsData | null {
   const legacy = readLegacyStorage<LegacySettings>(LEGACY_KEYS.settings);
   if (!legacy) return null;
 
-  return {
-    ...DEFAULT_SETTINGS,
+  return normalizeSettings({
     ...legacy,
     apiKey: legacy.saveApiKey ? legacy.apiKey ?? '' : '',
-    modelId: legacy.modelId?.startsWith('gemini-2.5') ? legacy.modelId : DEFAULT_MODEL_ID,
-  };
+  });
 }
 
 function hasStoredSettings(): boolean {
@@ -46,7 +67,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<SettingsData>(() => {
     const initial = (() => {
       if (hasStoredSettings()) {
-        return readStorage<SettingsData>(STORAGE_KEYS.settings, DEFAULT_SETTINGS);
+        return normalizeSettings(readStorage<StoredSettings>(STORAGE_KEYS.settings, DEFAULT_SETTINGS));
       }
 
       const migrated = migrateSettings();

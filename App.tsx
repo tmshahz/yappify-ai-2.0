@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeftRight,
   Clock,
   Copy,
   Download,
@@ -296,6 +297,7 @@ function App() {
   };
 
   const handleTranslate = async () => {
+    if (isProcessing) return;
     if (!requireApiKey()) return;
 
     let input = rawTranscript;
@@ -319,6 +321,27 @@ function App() {
       setAppState(AppState.READY);
     }
   };
+
+  const handleSwapLanguages = () => {
+    if (isProcessing) return;
+
+    const source = prefs.translate.sourceLanguage.trim();
+    const target = prefs.translate.targetLanguage.trim();
+
+    updatePrefs({
+      translate: {
+        ...prefs.translate,
+        sourceLanguage: target || 'Auto Detect',
+        targetLanguage: source || 'English',
+      },
+    });
+  };
+
+  const translateDirectionLabel = useMemo(() => {
+    const source = prefs.translate.sourceLanguage.trim() || 'Auto Detect';
+    const target = prefs.translate.targetLanguage.trim() || 'English';
+    return `${source} → ${target}`;
+  }, [prefs.translate.sourceLanguage, prefs.translate.targetLanguage]);
 
   const handleProcessUpload = async () => {
     const sourceBlob = uploadedFile || audioBlob;
@@ -528,6 +551,31 @@ function App() {
     </>
   );
 
+  const leftAction = {
+    [AppMode.SPEECH]: {
+      title: 'Transcribe Audio',
+      icon: PenTool,
+      loading: appState === AppState.TRANSCRIBING,
+      disabled: (!audioBlob && !uploadedFile) || isProcessing,
+      onClick: handleTranscribe,
+    },
+    [AppMode.TRANSLATE]: {
+      title: 'Translate',
+      icon: Languages,
+      loading: appState === AppState.TRANSCRIBING || appState === AppState.TRANSLATING,
+      disabled: (!rawTranscript && !audioBlob && !uploadedFile) || isProcessing,
+      onClick: handleTranslate,
+    },
+    [AppMode.UPLOAD]: {
+      title: 'Transcribe Audio',
+      icon: PenTool,
+      loading: appState === AppState.TRANSCRIBING || appState === AppState.PROCESSING_UPLOAD,
+      disabled: (!audioBlob && !uploadedFile) || isProcessing,
+      onClick: handleTranscribe,
+    },
+  }[prefs.activeMode];
+  const LeftIcon = leftAction.icon;
+
   const rightAction = {
     [AppMode.SPEECH]: {
       title: 'Promptify',
@@ -537,11 +585,11 @@ function App() {
       onClick: handlePromptify,
     },
     [AppMode.TRANSLATE]: {
-      title: 'Translate',
-      icon: Languages,
-      loading: appState === AppState.TRANSLATING,
-      disabled: (!rawTranscript && !audioBlob && !uploadedFile) || isProcessing,
-      onClick: handleTranslate,
+      title: 'Swap Languages',
+      icon: ArrowLeftRight,
+      loading: false,
+      disabled: isProcessing,
+      onClick: handleSwapLanguages,
     },
     [AppMode.UPLOAD]: {
       title: 'Process Upload',
@@ -555,11 +603,11 @@ function App() {
 
   useKeyboardShortcuts({
     onTalk: toggleRecording,
-    onTranscribe: handleTranscribe,
+    onTranscribe: leftAction.onClick,
     onRightAction: rightAction.onClick,
     onCopy: handleCopy,
     canTalk: !isProcessing,
-    canTranscribe: Boolean(audioBlob || uploadedFile) && !isProcessing,
+    canTranscribe: !leftAction.disabled,
     canRightAction: !rightAction.disabled,
     canCopy: Boolean(currentDisplay),
   });
@@ -745,20 +793,21 @@ function App() {
           <div className="yap-hero-stack flex-shrink-0 px-6 flex flex-col gap-5">
             <div className="yap-hero-controls flex items-center justify-center gap-6">
               <button
-                onClick={handleTranscribe}
-                disabled={(!audioBlob && !uploadedFile) || isProcessing}
-                title="Transcribe Audio"
+                onClick={leftAction.onClick}
+                disabled={leftAction.disabled}
+                title={leftAction.title}
                 className={clsx(
                   'yap-action-button yap-hover-lift yap-glow-in flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all shadow-md active:scale-95 active:shadow-sm',
-                  appState === AppState.TRANSCRIBING
+                  leftAction.loading
                     ? 'bg-gray-100 dark:bg-[var(--yap-surface-2)] border border-transparent text-gray-400'
-                    : 'bg-white dark:bg-[rgba(255,255,255,0.035)] border border-gray-200 dark:border-[var(--yap-glass-border)] text-gray-600 dark:text-[var(--yap-text-2)] hover:border-black dark:hover:border-[rgba(255,255,255,0.14)] hover:text-black dark:hover:text-[var(--yap-text-1)]'
+                    : 'bg-white dark:bg-[rgba(255,255,255,0.035)] border border-gray-200 dark:border-[var(--yap-glass-border)] text-gray-600 dark:text-[var(--yap-text-2)] hover:border-black dark:hover:border-[rgba(255,255,255,0.14)] hover:text-black dark:hover:text-[var(--yap-text-1)]',
+                  leftAction.disabled && !leftAction.loading && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                {appState === AppState.TRANSCRIBING ? (
+                {leftAction.loading ? (
                   <Loader2 className="animate-spin" size={24} />
                 ) : (
-                  <PenTool size={24} />
+                  <LeftIcon size={24} />
                 )}
               </button>
 
@@ -796,6 +845,17 @@ function App() {
                 )}
               </button>
             </div>
+
+            {prefs.activeMode === AppMode.TRANSLATE && (
+              <div className="flex justify-center">
+                <div
+                  className="yap-mode-badge inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-[var(--yap-glass-border)] bg-white/70 dark:bg-[rgba(255,255,255,0.04)] px-4 py-1.5 text-xs font-semibold tracking-wide text-gray-600 dark:text-[var(--yap-text-2)] shadow-sm"
+                  aria-live="polite"
+                >
+                  {translateDirectionLabel}
+                </div>
+              </div>
+            )}
 
             <div className="w-full max-w-lg mx-auto">
               <div className="flex justify-between items-end mb-2 px-1 h-6">
@@ -850,7 +910,7 @@ function App() {
                     {prefs.activeMode === AppMode.SPEECH
                       ? 'Record, Transcribe, then Promptify.'
                       : prefs.activeMode === AppMode.TRANSLATE
-                        ? 'Record or transcribe, then translate.'
+                        ? 'Record, then press Translate.'
                         : 'Upload or record audio, then process.'}
                   </p>
                   <span className="yap-mode-badge mt-4 rounded-full px-3 py-1 text-xs font-semibold">
